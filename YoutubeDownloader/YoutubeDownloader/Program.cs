@@ -5,19 +5,14 @@ using YoutubeExplode;
 using YoutubeExplode.Videos;
 using YoutubeExplode.Videos.Streams;
 using YoutubeExplode.Converter;
+using System.IO.Compression;
 
 Console.WriteLine("Hello, World!");
 
-var youtubeClient = new YoutubeClient();
-var ffmpgPath = "ffmpeg.exe";
-
-if (!Directory.Exists("Files"))
-    Directory.CreateDirectory("Files");
-
-await DownloadMP4Async(youtubeClient, "Z3m7HXeiHpg", "Files", ffmpgPath);
-
 static string ResolveFilename(string title, VideoId videoId)
 {
+    // TODO: we can use `Path.GetInvalidFileNameChars()` & `Path.GetInvalidPathChars`
+
     var newFilename = Regex.Replace(title, @"[\\\/:*?""<>|]", string.Empty);
 
     return string.IsNullOrWhiteSpace(newFilename)
@@ -50,7 +45,7 @@ static async Task<string> DownloadMP3Async(
     await youtubeClient.Videos
                        .Streams
                        .DownloadAsync(
-                            streamInfo, 
+                            streamInfo,
                             filePath,
                             cancellationToken: cancellationToken)
                        .ConfigureAwait(false);
@@ -72,7 +67,7 @@ static async Task<string> DownloadMP4Async(
     var streamManifest = await youtubeClient.Videos
                                             .Streams
                                             .GetManifestAsync(
-                                                videoId, 
+                                                videoId,
                                                 cancellationToken)
                                             .ConfigureAwait(false);
 
@@ -87,19 +82,65 @@ static async Task<string> DownloadMP4Async(
     var fileName = ResolveFilename(video.Title, videoId);
     var filePath = Path.Combine(folderPath, $"{fileName}.mp4");
 
-    var streamInfos = new IStreamInfo[] { audioStreamInfo, videoStreamInfo };
+    var streamInfos = new IStreamInfo[]
+    {
+        audioStreamInfo,
+        videoStreamInfo
+    };
 
-    // TODO: report progress
     await youtubeClient.Videos
                        .DownloadAsync(
-                            streamInfos, 
+                            streamInfos,
                             new ConversionRequestBuilder(filePath)
                                     .SetFFmpegPath(ffmpegPath)
-                                    .Build(), 
+                                    .Build(),
                             cancellationToken: cancellationToken)
                        .ConfigureAwait(false);
 
     return fileName;
+}
+
+static async Task DownloadFFmpegAsync(CancellationToken cancellationToken = default)
+{
+    var releaseUrl = GetDownloadUrl();
+
+    using var httpClient = new HttpClient();
+    await using var stream = await httpClient.GetStreamAsync(releaseUrl, cancellationToken)
+                                             .ConfigureAwait(false);
+
+    using var zip = new ZipArchive(stream, ZipArchiveMode.Read);
+
+    var ffmpegFileName = OperatingSystem.IsWindows()
+                                        ? "ffmpeg.exe"
+                                        : "ffmpeg";
+
+    var ffmpegFilePath = Path.Combine(Environment.CurrentDirectory, ffmpegFileName);
+
+    var zipEntry = zip.GetEntry(ffmpegFileName) 
+                      ?? throw new FileNotFoundException($"{ffmpegFileName} not found in {Environment.CurrentDirectory}");
+
+    await using var zipEntryStream = zipEntry.Open();
+    await using var fileStream = File.Create(ffmpegFilePath);
+
+    await zipEntryStream.CopyToAsync(fileStream, cancellationToken);
+
+    static string GetDownloadUrl()
+    {
+        var is64BitOS = Environment.Is64BitOperatingSystem;
+
+        if (OperatingSystem.IsWindows())
+        {
+            return is64BitOS ? "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-win-64.zip"
+                             : "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.2.1/ffmpeg-4.2.1-win-32.zip";
+        }
+        else if (OperatingSystem.IsLinux())
+        {
+            return is64BitOS ? "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-linux-64.zip"
+                             : "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-linux-32.zip";
+        }
+
+        throw new NotImplementedException("Unknown IOS");
+    }
 }
 
 enum ContentType
