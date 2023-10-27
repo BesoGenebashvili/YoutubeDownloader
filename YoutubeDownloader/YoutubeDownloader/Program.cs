@@ -9,22 +9,12 @@ using YoutubeExplode.Converter;
 Console.WriteLine("Hello, World!");
 
 var youtubeClient = new YoutubeClient();
+var ffmpgPath = "ffmpeg.exe";
 
 if (!Directory.Exists("Files"))
     Directory.CreateDirectory("Files");
 
-var videoIds = File.ReadAllLines("Favorites-videos.csv")
-                   .Skip(1)
-                   .Where(t => !string.IsNullOrWhiteSpace(t))
-                   .Select(t => t.Split(',')
-                                 .First()
-                                 .Trim())
-                   .ToArray();
-
-foreach (var videoId in videoIds)
-{
-    await DownloadMP3Async(youtubeClient, videoId, "Files");
-}
+await DownloadMP4Async(youtubeClient, "Z3m7HXeiHpg", "Files", ffmpgPath);
 
 static string ResolveFilename(string title, VideoId videoId)
 {
@@ -35,7 +25,6 @@ static string ResolveFilename(string title, VideoId videoId)
                  : newFilename;
 }
 
-/// Returns: fileName
 static async Task<string> DownloadMP3Async(
     YoutubeClient youtubeClient,
     VideoId videoId,
@@ -48,13 +37,13 @@ static async Task<string> DownloadMP3Async(
 
     var streamManifest = await youtubeClient.Videos
                                             .Streams
-                                            .GetManifestAsync(videoId, cancellationToken);
+                                            .GetManifestAsync(videoId, cancellationToken)
+                                            .ConfigureAwait(false);
 
     var streamInfo = streamManifest.GetAudioOnlyStreams()
                                    .GetWithHighestBitrate();
 
     var fileName = ResolveFilename(video.Title, videoId);
-
     var filePath = Path.Combine(folderPath, $"{fileName}.mp3");
 
     // TODO: report progress
@@ -62,20 +51,55 @@ static async Task<string> DownloadMP3Async(
                        .Streams
                        .DownloadAsync(
                             streamInfo, 
-                            filePath, 
-                            cancellationToken: cancellationToken);
+                            filePath,
+                            cancellationToken: cancellationToken)
+                       .ConfigureAwait(false);
 
     return fileName;
 }
 
-/// Returns: fileName
 static async Task<string> DownloadMP4Async(
     YoutubeClient youtubeClient,
     VideoId videoId,
     string folderPath,
+    string ffmpegPath,
     CancellationToken cancellationToken = default)
 {
-    throw new NotImplementedException();
+    var video = await youtubeClient.Videos
+                                   .GetAsync(videoId, cancellationToken)
+                                   .ConfigureAwait(false);
+
+    var streamManifest = await youtubeClient.Videos
+                                            .Streams
+                                            .GetManifestAsync(
+                                                videoId, 
+                                                cancellationToken)
+                                            .ConfigureAwait(false);
+
+    var audioStreamInfo = streamManifest.GetAudioStreams()
+                                        .Where(s => s.Container == Container.Mp4)
+                                        .GetWithHighestBitrate();
+
+    var videoStreamInfo = streamManifest.GetVideoStreams()
+                                        .Where(s => s.Container == Container.Mp4)
+                                        .GetWithHighestVideoQuality();
+
+    var fileName = ResolveFilename(video.Title, videoId);
+    var filePath = Path.Combine(folderPath, $"{fileName}.mp4");
+
+    var streamInfos = new IStreamInfo[] { audioStreamInfo, videoStreamInfo };
+
+    // TODO: report progress
+    await youtubeClient.Videos
+                       .DownloadAsync(
+                            streamInfos, 
+                            new ConversionRequestBuilder(filePath)
+                                    .SetFFmpegPath(ffmpegPath)
+                                    .Build(), 
+                            cancellationToken: cancellationToken)
+                       .ConfigureAwait(false);
+
+    return fileName;
 }
 
 enum ContentType
