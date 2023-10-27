@@ -9,6 +9,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="YoutubeExplode" Version="6.3.6" />
+		<PackageReference Include="YoutubeExplode.Converter" Version="6.3.6" />
 	</ItemGroup>
 
 </Project>
