@@ -99,6 +99,7 @@ static async Task<string> DownloadMP4Async(
     VideoId videoId,
     string folderPath,
     string ffmpegPath,
+    IProgress<double>? progress = null,
     CancellationToken cancellationToken = default)
 {
     var video = await youtubeClient.Videos
@@ -135,12 +136,12 @@ static async Task<string> DownloadMP4Async(
                             new ConversionRequestBuilder(filePath)
                                     .SetFFmpegPath(ffmpegPath)
                                     .Build(),
+                            progress,
                             cancellationToken: cancellationToken)
                        .ConfigureAwait(false);
 
     return fileName;
 }
-
 
 // TODO: . file path & environment variable
 static async Task<bool> IsFFmpegAvailableAsync(CancellationToken cancellationToken = default) => throw new NotImplementedException();
