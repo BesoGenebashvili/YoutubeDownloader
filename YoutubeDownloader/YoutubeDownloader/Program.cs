@@ -6,8 +6,48 @@ using YoutubeExplode.Videos;
 using YoutubeExplode.Videos.Streams;
 using YoutubeExplode.Converter;
 using System.IO.Compression;
+using Spectre.Console;
 
 Console.WriteLine("Hello, World!");
+
+var youtubeClient = new YoutubeClient();
+
+var videoIds = new List<string>()
+{
+    "Du2TXMb1IHo",
+    "r_nSu8UOYdo",
+    "bdWIwpTS48s"
+};
+
+await AnsiConsole.Progress()
+                 .AutoRefresh(true)
+                 .AutoClear(true)
+                 .HideCompleted(false)
+                 .Columns(new ProgressColumn[]
+                 {
+                     new TaskDescriptionColumn(),
+                     new ProgressBarColumn(),
+                     new PercentageColumn(),
+                     new RemainingTimeColumn(),
+                     new SpinnerColumn(),
+                 })
+                 .StartAsync(async ctx =>
+                 {
+                     var downloadTasks = videoIds.Select(videoId =>
+                     {
+                         var downloadTask = ctx.AddTask($"[green]{videoId}[/]");
+
+                         var progress = new Progress<double>(value => downloadTask.Increment(value));
+
+                         return DownloadMP3Async(
+                             youtubeClient,
+                             videoId,
+                             "Files",
+                             progress);
+                     });
+
+                     await Task.WhenAll(downloadTasks);
+                 });
 
 static string ResolveFilename(string title, VideoId videoId)
 {
@@ -24,6 +64,7 @@ static async Task<string> DownloadMP3Async(
     YoutubeClient youtubeClient,
     VideoId videoId,
     string folderPath,
+    IProgress<double>? progress = null,
     CancellationToken cancellationToken = default)
 {
     var video = await youtubeClient.Videos
@@ -41,12 +82,12 @@ static async Task<string> DownloadMP3Async(
     var fileName = ResolveFilename(video.Title, videoId);
     var filePath = Path.Combine(folderPath, $"{fileName}.mp3");
 
-    // TODO: report progress
     await youtubeClient.Videos
                        .Streams
                        .DownloadAsync(
                             streamInfo,
                             filePath,
+                            progress,
                             cancellationToken: cancellationToken)
                        .ConfigureAwait(false);
 
@@ -100,6 +141,10 @@ static async Task<string> DownloadMP4Async(
     return fileName;
 }
 
+
+// TODO: . file path & environment variable
+static async Task<bool> IsFFmpegAvailableAsync(CancellationToken cancellationToken = default) => throw new NotImplementedException();
+
 static async Task DownloadFFmpegAsync(CancellationToken cancellationToken = default)
 {
     var releaseUrl = GetDownloadUrl();
@@ -116,7 +161,7 @@ static async Task DownloadFFmpegAsync(CancellationToken cancellationToken = defa
 
     var ffmpegFilePath = Path.Combine(Environment.CurrentDirectory, ffmpegFileName);
 
-    var zipEntry = zip.GetEntry(ffmpegFileName) 
+    var zipEntry = zip.GetEntry(ffmpegFileName)
                       ?? throw new FileNotFoundException($"{ffmpegFileName} not found in {Environment.CurrentDirectory}");
 
     await using var zipEntryStream = zipEntry.Open();
