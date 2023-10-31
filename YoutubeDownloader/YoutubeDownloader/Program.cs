@@ -1,6 +1,4 @@
-﻿#pragma warning disable SYSLIB1045
-
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using YoutubeExplode;
 using YoutubeExplode.Videos;
 using YoutubeExplode.Videos.Streams;
@@ -23,14 +21,14 @@ await AnsiConsole.Progress()
                  .AutoRefresh(true)
                  .AutoClear(true)
                  .HideCompleted(false)
-                 .Columns(new ProgressColumn[]
-                 {
+                 .Columns(
+                 [
                      new TaskDescriptionColumn(),
                      new ProgressBarColumn(),
                      new PercentageColumn(),
                      new RemainingTimeColumn(),
                      new SpinnerColumn(),
-                 })
+                 ])
                  .StartAsync(async ctx =>
                  {
                      var downloadTasks = videoIds.Select(videoId =>
