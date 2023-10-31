@@ -51,9 +51,9 @@ await AnsiConsole.Progress()
 
 static string ResolveFilename(string title, VideoId videoId)
 {
-    // TODO: we can use `Path.GetInvalidFileNameChars()` & `Path.GetInvalidPathChars`
+    var regexPattern = $"[{Regex.Escape(new(Path.GetInvalidFileNameChars()))}]";
 
-    var newFilename = Regex.Replace(title, @"[\\\/:*?""<>|]", string.Empty);
+    var newFilename = Regex.Replace(title, regexPattern, string.Empty);
 
     return string.IsNullOrWhiteSpace(newFilename)
                  ? videoId
