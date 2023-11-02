@@ -9,7 +9,6 @@ using Spectre.Console;
 Console.WriteLine("Hello, World!");
 
 //TODO: DI
-
 var youtubeClient = new YoutubeClient();
 
 var videoIds = new List<string>
@@ -22,7 +21,7 @@ var videoIds = new List<string>
 await AnsiConsole.Progress()
                  .AutoRefresh(true)
                  .AutoClear(false)
-                 .HideCompleted(false)
+                 .HideCompleted(true)
                  .Columns(
                  [
                      new TaskDescriptionColumn(),
@@ -35,27 +34,40 @@ await AnsiConsole.Progress()
                  {
                      try
                      {
-                         var downloadTasks = videoIds.Select(videoId =>
+                         var downloadTasks = videoIds.Select<string, Task<DownloadResult>>(async videoId =>
                          {
+
                              var downloadTask = ctx.AddTask($"[green]{videoId}[/]");
 
                              var progress = new Progress<double>(value => downloadTask.Increment(value));
 
-                             //TODO: Task.Run ?
-                             //TODO: Remove or hide failed ones from progress
-                             return Task.Run(() => DownloadMP3Async(
-                                        youtubeClient,
-                                        videoId,
-                                        "Files",
-                                        progress));
+                             try
+                             {
+                                 var fileName = await DownloadMP3Async(
+                                                          youtubeClient,
+                                                          videoId,
+                                                          "Files",
+                                                          progress)
+                                                      .ConfigureAwait(false);
+
+                                 return new DownloadResult.Success(videoId, fileName);
+                             }
+                             catch (Exception ex)
+                             {
+                                 downloadTask.StopTask();
+                                 return new DownloadResult.Failure(videoId, ex.ToString());
+                             }
                          });
 
-                         await Task.WhenAll(downloadTasks)
-                                   .ConfigureAwait(false);
+                         var downloadResults = await Task.WhenAll(downloadTasks)
+                                                         .ConfigureAwait(false);
+
+
+                         // Audit
                      }
                      catch (Exception ex)
                      {
-                         await Console.Out.WriteLineAsync(ex.ToString());
+                         await Console.Out.WriteLineAsync($"FATAL ERROR: {ex}");
                      }
                  }).ConfigureAwait(false);
 
@@ -72,50 +84,38 @@ static string ResolveFilename(string title, VideoId videoId)
                  : newFilename;
 }
 
-static async Task<DownloadResult> DownloadMP3Async(
+static async Task<string> DownloadMP3Async(
     YoutubeClient youtubeClient,
     VideoId videoId,
     string folderPath,
     IProgress<double>? progress = null,
     CancellationToken cancellationToken = default)
 {
-    try
-    {
-        var video = await youtubeClient.Videos
-                                       .GetAsync(videoId, cancellationToken)
-                                       .ConfigureAwait(false);
+    var video = await youtubeClient.Videos
+                                   .GetAsync(videoId, cancellationToken)
+                                   .ConfigureAwait(false);
 
-        var streamManifest = await youtubeClient.Videos
-                                                .Streams
-                                                .GetManifestAsync(videoId, cancellationToken)
-                                                .ConfigureAwait(false);
+    var streamManifest = await youtubeClient.Videos
+                                            .Streams
+                                            .GetManifestAsync(videoId, cancellationToken)
+                                            .ConfigureAwait(false);
 
-        var streamInfo = streamManifest.GetAudioOnlyStreams()
-                                       .GetWithHighestBitrate();
+    var streamInfo = streamManifest.GetAudioOnlyStreams()
+                                   .GetWithHighestBitrate();
 
-        var fileName = ResolveFilename(video.Title, videoId);
-        var filePath = Path.Combine(folderPath, $"{fileName}.mp3");
+    var fileName = ResolveFilename(video.Title, videoId);
+    var filePath = Path.Combine(folderPath, $"{fileName}.mp3");
 
-        await youtubeClient.Videos
-                           .Streams
-                           .DownloadAsync(
-                                streamInfo,
-                                filePath,
-                                progress,
-                                cancellationToken: cancellationToken)
-                           .ConfigureAwait(false);
+    await youtubeClient.Videos
+                       .Streams
+                       .DownloadAsync(
+                            streamInfo,
+                            filePath,
+                            progress,
+                            cancellationToken: cancellationToken)
+                       .ConfigureAwait(false);
 
-        return new DownloadResult.Success(
-                       videoId,
-                       fileName,
-                       Path.GetFullPath(filePath));
-    }
-    catch (Exception ex)
-    {
-        return new DownloadResult.Failure(
-                       videoId,
-                       ex.ToString());
-    }
+    return fileName;
 }
 
 static async Task<string> DownloadMP4Async(
@@ -224,6 +224,6 @@ enum ContentType
 
 internal abstract record DownloadResult(string VideoId)
 {
-    internal record Success(string VideoId, string FileName, string AbsoluteFilePath) : DownloadResult(VideoId);
+    internal record Success(string VideoId, string FileName) : DownloadResult(VideoId);
     internal record Failure(string VideoId, string ErrorMessage) : DownloadResult(VideoId);
 }
