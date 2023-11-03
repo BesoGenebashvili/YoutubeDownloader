@@ -72,17 +72,7 @@ await AnsiConsole.Progress()
                          var downloadResults = await Task.WhenAll(downloadTasks)
                                                          .ConfigureAwait(false);
 
-                         // TODO: This should be one function + Log
-                         var successes = downloadResults.OfType<Success>()
-                                                        .ToList()
-                                                        .AsReadOnly();
-
-                         var failures = downloadResults.OfType<Failure>()
-                                                       .ToList()
-                                                       .AsReadOnly();
-
-                         await AuditSuccessfulDownloadsAsync(successes);
-                         await AuditFailedDownloadsAsync(failures);
+                         await AuditDownloadsAsync(downloadResults).ConfigureAwait(false);
                      }
                      catch (Exception ex)
                      {
@@ -232,6 +222,28 @@ static async Task DownloadFFmpegAsync(CancellationToken cancellationToken = defa
     }
 }
 
+static async Task AuditDownloadsAsync(
+    IReadOnlyCollection<DownloadResult> downloads,
+    CancellationToken cancellationToken = default)
+{
+    var successes = downloads.OfType<Success>()
+                             .ToList()
+                             .AsReadOnly();
+
+    var failures = downloads.OfType<Failure>()
+                            .ToList()
+                            .AsReadOnly();
+
+    Task[] auditTasks =
+    [
+        AuditSuccessfulDownloadsAsync(successes, cancellationToken),
+        AuditFailedDownloadsAsync(failures, cancellationToken)
+    ];
+
+    await Task.WhenAll(auditTasks)
+              .ConfigureAwait(false);
+}
+
 static async Task AuditSuccessfulDownloadsAsync(
     IReadOnlyCollection<Success> successes,
     CancellationToken cancellationToken = default)
@@ -332,19 +344,19 @@ internal static class Extensions
     public static string AsCSVColumn(this Failure self) => $"{self.VideoId},{self.RetryCount},{self.ErrorMessage}";
 }
 
-internal unsafe static class ConsoleInterop
+internal static unsafe partial class ConsoleInterop
 {
     public const int MF_BYCOMMAND = 0x00000000;
     public const int SC_MINIMIZE = 0xF020;
     public const int SC_MAXIMIZE = 0xF030;
     public const int SC_SIZE = 0xF000;
 
-    [DllImport("user32.dll")]
-    public static extern int DeleteMenu(IntPtr hMenu, int nPosition, int wFlags);
+    [LibraryImport("user32.dll")]
+    public static partial int DeleteMenu(IntPtr hMenu, int nPosition, int wFlags);
 
-    [DllImport("user32.dll")]
-    public static extern IntPtr GetSystemMenu(IntPtr hWnd, bool bRevert);
+    [LibraryImport("user32.dll")]
+    public static partial IntPtr GetSystemMenu(IntPtr hWnd, [MarshalAs(UnmanagedType.Bool)] bool bRevert);
 
-    [DllImport("kernel32.dll", ExactSpelling = true)]
-    public static extern IntPtr GetConsoleWindow();
+    [LibraryImport("kernel32.dll")]
+    public static partial IntPtr GetConsoleWindow();
 }
