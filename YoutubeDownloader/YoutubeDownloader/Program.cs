@@ -5,10 +5,13 @@ using YoutubeExplode.Videos.Streams;
 using YoutubeExplode.Converter;
 using System.IO.Compression;
 using Spectre.Console;
+using System.Text;
+using System.Runtime.InteropServices;
 
 Console.WriteLine("Hello, World!");
 
-//TODO: DI
+ConfigureConsole();
+
 var youtubeClient = new YoutubeClient();
 
 var videoIds = new List<string>
@@ -28,7 +31,7 @@ await AnsiConsole.Progress()
                      new ProgressBarColumn(),
                      new PercentageColumn(),
                      new RemainingTimeColumn(),
-                     new SpinnerColumn(),
+                     new SpinnerColumn(Spinner.Known.Point),
                  ])
                  .StartAsync(async ctx =>
                  {
@@ -67,7 +70,7 @@ await AnsiConsole.Progress()
                      }
                      catch (Exception ex)
                      {
-                         await Console.Out.WriteLineAsync($"FATAL ERROR: {ex}");
+                         await Console.Out.WriteLineAsync($"An error occurred while downloading data: {ex.Message}");
                      }
                  }).ConfigureAwait(false);
 
@@ -213,17 +216,53 @@ static async Task DownloadFFmpegAsync(CancellationToken cancellationToken = defa
     }
 }
 
+// save to CSV
+// we need serilog for just trace logging
 static async Task AuditSuccessAsync(DownloadResult.Success result) => throw new NotImplementedException();
 static async Task AuditFailureAsync(DownloadResult.Failure result) => throw new NotImplementedException();
 
-enum ContentType
+unsafe static void ConfigureConsole()
 {
-    MP3,
-    MP4
+    try
+    {
+        var consoleWindow = ConsoleInterop.GetSystemMenu(ConsoleInterop.GetConsoleWindow(), false);
+
+        ConsoleInterop.DeleteMenu(consoleWindow, ConsoleInterop.SC_MINIMIZE, ConsoleInterop.MF_BYCOMMAND);
+        ConsoleInterop.DeleteMenu(consoleWindow, ConsoleInterop.SC_MAXIMIZE, ConsoleInterop.MF_BYCOMMAND);
+        ConsoleInterop.DeleteMenu(consoleWindow, ConsoleInterop.SC_SIZE, ConsoleInterop.MF_BYCOMMAND);
+
+        Console.WindowHeight = Console.LargestWindowHeight / 2;
+        Console.WindowWidth = Console.LargestWindowWidth / 2;
+
+        Console.OutputEncoding = Encoding.UTF8;
+        Console.InputEncoding = Encoding.UTF8;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"An error occurred while configuring the console settings: {ex.Message}");
+        // TODO: Log.Error
+    }
 }
 
 internal abstract record DownloadResult(string VideoId)
 {
     internal record Success(string VideoId, string FileName) : DownloadResult(VideoId);
     internal record Failure(string VideoId, string ErrorMessage) : DownloadResult(VideoId);
+}
+
+internal unsafe static class ConsoleInterop
+{
+    public const int MF_BYCOMMAND = 0x00000000;
+    public const int SC_MINIMIZE = 0xF020;
+    public const int SC_MAXIMIZE = 0xF030;
+    public const int SC_SIZE = 0xF000;
+
+    [DllImport("user32.dll")]
+    public static extern int DeleteMenu(IntPtr hMenu, int nPosition, int wFlags);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetSystemMenu(IntPtr hWnd, bool bRevert);
+
+    [DllImport("kernel32.dll", ExactSpelling = true)]
+    public static extern IntPtr GetConsoleWindow();
 }
