@@ -7,6 +7,7 @@ using System.IO.Compression;
 using Spectre.Console;
 using System.Text;
 using System.Runtime.InteropServices;
+using static DownloadResult;
 
 Console.WriteLine("Hello, World!");
 
@@ -46,27 +47,42 @@ await AnsiConsole.Progress()
 
                              try
                              {
-                                 var fileName = await DownloadMP3Async(
+                                 var (fileName, fileSizeInMB) = await DownloadMP3Async(
                                                           youtubeClient,
                                                           videoId,
                                                           "Files",
                                                           progress)
                                                       .ConfigureAwait(false);
 
-                                 return new DownloadResult.Success(videoId, fileName);
+                                 return new Success(
+                                                videoId,
+                                                fileName,
+                                                fileSizeInMB);
                              }
                              catch (Exception ex)
                              {
                                  downloadTask.StopTask();
-                                 return new DownloadResult.Failure(videoId, ex.ToString());
+
+                                 return new Failure(
+                                                videoId,
+                                                ex.ToString());
                              }
                          });
 
                          var downloadResults = await Task.WhenAll(downloadTasks)
                                                          .ConfigureAwait(false);
 
+                         // TODO: This should be one function + Log
+                         var successes = downloadResults.OfType<Success>()
+                                                        .ToList()
+                                                        .AsReadOnly();
 
-                         // Audit
+                         var failures = downloadResults.OfType<Failure>()
+                                                       .ToList()
+                                                       .AsReadOnly();
+
+                         await AuditSuccessfulDownloadsAsync(successes);
+                         await AuditFailedDownloadsAsync(failures);
                      }
                      catch (Exception ex)
                      {
@@ -87,11 +103,11 @@ static string ResolveFilename(string title, VideoId videoId)
                  : newFilename;
 }
 
-static async Task<string> DownloadMP3Async(
+static async Task<(string fileName, double fileSizeInMB)> DownloadMP3Async(
     YoutubeClient youtubeClient,
     VideoId videoId,
     string folderPath,
-    IProgress<double>? progress = null,
+    IProgress<double>? progress = default,
     CancellationToken cancellationToken = default)
 {
     var video = await youtubeClient.Videos
@@ -118,15 +134,15 @@ static async Task<string> DownloadMP3Async(
                             cancellationToken: cancellationToken)
                        .ConfigureAwait(false);
 
-    return fileName;
+    return (fileName, streamInfo.Size.MegaBytes);
 }
 
 static async Task<string> DownloadMP4Async(
     YoutubeClient youtubeClient,
     VideoId videoId,
     string folderPath,
-    string ffmpegPath,
-    IProgress<double>? progress = null,
+    string? ffmpegPath = default,
+    IProgress<double>? progress = default,
     CancellationToken cancellationToken = default)
 {
     var video = await youtubeClient.Videos
@@ -216,10 +232,68 @@ static async Task DownloadFFmpegAsync(CancellationToken cancellationToken = defa
     }
 }
 
-// save to CSV
-// we need serilog for just trace logging
-static async Task AuditSuccessAsync(DownloadResult.Success result) => throw new NotImplementedException();
-static async Task AuditFailureAsync(DownloadResult.Failure result) => throw new NotImplementedException();
+static async Task AuditSuccessfulDownloadsAsync(
+    IReadOnlyCollection<Success> successes,
+    CancellationToken cancellationToken = default)
+{
+    // TODO: "File Absolute Path"
+    var headers = string.Join(',', ["Video Id", "File Name", "File Size In MB"]);
+    var records = successes.Select(Extensions.AsCSVColumn);
+
+    // TODO: Receive as parameter
+    var fileName = "Succeed.csv";
+
+    var content = File.Exists(fileName)
+                      ? records
+                      : records.Prepend(headers);
+
+    await File.AppendAllLinesAsync(
+                  fileName,
+                  content,
+                  cancellationToken)
+              .ConfigureAwait(false);
+}
+
+static async Task AuditFailedDownloadsAsync(
+    IReadOnlyCollection<Failure> failures,
+    CancellationToken cancellationToken = default)
+{
+    var headers = string.Join(',', ["Video Id", "Retry Count", "Error Message"]);
+
+    // TODO: Receive as parameter
+    var fileName = "Failed.csv";
+
+    if (!File.Exists(fileName))
+        await File.WriteAllLinesAsync(
+                      fileName,
+                      failures.Select(Extensions.AsCSVColumn)
+                              .Prepend(headers),
+                      cancellationToken)
+                  .ConfigureAwait(false);
+
+    var availableRecords = File.ReadAllLines(fileName)
+                               .Skip(1)
+                               .Select(s =>
+                               {
+                                   var columns = s.Split(',');
+
+                                   return new Failure(columns[0], columns[2], int.Parse(columns[1]));
+                               });
+
+    var newRecords = availableRecords.Concat(failures)
+                                     .GroupBy(
+                                         x => x.VideoId,
+                                         (key, xs) => xs.MaxBy(x => x.RetryCount)!)
+                                     .Select(Extensions.AsCSVColumn)
+                                     .Prepend(headers);
+
+    await File.WriteAllLinesAsync(
+                  fileName,
+                  failures.Select(Extensions.AsCSVColumn)
+                          .Prepend(headers),
+                  cancellationToken)
+              .ConfigureAwait(false);
+}
 
 unsafe static void ConfigureConsole()
 {
@@ -227,9 +301,11 @@ unsafe static void ConfigureConsole()
     {
         var consoleWindow = ConsoleInterop.GetSystemMenu(ConsoleInterop.GetConsoleWindow(), false);
 
+#pragma warning disable CA1806
         ConsoleInterop.DeleteMenu(consoleWindow, ConsoleInterop.SC_MINIMIZE, ConsoleInterop.MF_BYCOMMAND);
         ConsoleInterop.DeleteMenu(consoleWindow, ConsoleInterop.SC_MAXIMIZE, ConsoleInterop.MF_BYCOMMAND);
         ConsoleInterop.DeleteMenu(consoleWindow, ConsoleInterop.SC_SIZE, ConsoleInterop.MF_BYCOMMAND);
+#pragma warning restore
 
         Console.WindowHeight = Console.LargestWindowHeight / 2;
         Console.WindowWidth = Console.LargestWindowWidth / 2;
@@ -246,8 +322,14 @@ unsafe static void ConfigureConsole()
 
 internal abstract record DownloadResult(string VideoId)
 {
-    internal record Success(string VideoId, string FileName) : DownloadResult(VideoId);
-    internal record Failure(string VideoId, string ErrorMessage) : DownloadResult(VideoId);
+    internal record Success(string VideoId, string FileName, double FileSizeInMB) : DownloadResult(VideoId);
+    internal record Failure(string VideoId, string ErrorMessage, int RetryCount = 0) : DownloadResult(VideoId);
+}
+
+internal static class Extensions
+{
+    public static string AsCSVColumn(this Success self) => $"{self.VideoId},{self.FileName},{self.FileSizeInMB}";
+    public static string AsCSVColumn(this Failure self) => $"{self.VideoId},{self.RetryCount},{self.ErrorMessage}";
 }
 
 internal unsafe static class ConsoleInterop
