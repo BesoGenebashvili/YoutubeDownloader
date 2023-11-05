@@ -11,6 +11,12 @@ using static DownloadResult;
 
 Console.WriteLine("Hello, World!");
 
+if (!IsFFmpegAvailable())
+{
+    await DownloadFFmpegAsync()
+              .ConfigureAwait(false);
+}
+
 ConfigureConsole();
 
 var youtubeClient = new YoutubeClient();
@@ -179,8 +185,14 @@ static async Task<string> DownloadMP4Async(
     return fileName;
 }
 
-// TODO: relative path | environment variable
-static async Task<bool> IsFFmpegAvailableAsync(CancellationToken cancellationToken = default) => throw new NotImplementedException();
+static string GetFFmpegFileName() =>
+    OperatingSystem.IsWindows()
+                   ? "ffmpeg.exe"
+                   : "ffmpeg";
+
+static bool IsFFmpegAvailable() => 
+    File.Exists(GetFFmpegFileName()) || 
+    Environment.GetEnvironmentVariable("ffmpeg") is not null;
 
 static async Task DownloadFFmpegAsync(CancellationToken cancellationToken = default)
 {
@@ -192,9 +204,7 @@ static async Task DownloadFFmpegAsync(CancellationToken cancellationToken = defa
 
     using var zip = new ZipArchive(stream, ZipArchiveMode.Read);
 
-    var ffmpegFileName = OperatingSystem.IsWindows()
-                                        ? "ffmpeg.exe"
-                                        : "ffmpeg";
+    var ffmpegFileName = GetFFmpegFileName();
 
     var ffmpegFilePath = Path.Combine(Environment.CurrentDirectory, ffmpegFileName);
 
@@ -295,9 +305,9 @@ static async Task AuditFailedDownloadsAsync(
                          .Select(s =>
                          {
                              var columns = s.Split(',');
-                         
+
                              var fileFormat = Enum.Parse<FileFormat>(columns[1], true);
-                         
+
                              return (failure: new Failure(columns[0], fileFormat, columns[3]),
                                      retryCount: int.Parse(columns[2]));
                          });
