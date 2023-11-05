@@ -57,6 +57,7 @@ await AnsiConsole.Progress()
                                  return new Success(
                                                 videoId,
                                                 fileName,
+                                                FileFormat.MP3,
                                                 fileSizeInMB);
                              }
                              catch (Exception ex)
@@ -65,7 +66,9 @@ await AnsiConsole.Progress()
 
                                  return new Failure(
                                                 videoId,
-                                                ex.ToString());
+                                                FileFormat.MP3,
+                                                ex.Message
+                                                  .Replace(',', '.'));
                              }
                          });
 
@@ -249,7 +252,7 @@ static async Task AuditSuccessfulDownloadsAsync(
     CancellationToken cancellationToken = default)
 {
     // TODO: "File Absolute Path"
-    var headers = string.Join(',', ["Video Id", "File Name", "File Size In MB"]);
+    var headers = string.Join(',', ["Video Id", "File Name", "File Format", "File Size In MB"]);
     var records = successes.Select(Extensions.AsCSVColumn);
 
     // TODO: Receive as parameter
@@ -270,12 +273,13 @@ static async Task AuditFailedDownloadsAsync(
     IReadOnlyCollection<Failure> failures,
     CancellationToken cancellationToken = default)
 {
-    var headers = string.Join(',', ["Video Id", "Retry Count", "Error Message"]);
+    var headers = string.Join(',', ["Video Id", "File Format", "Retry Count", "Error Message"]);
 
     // TODO: Receive as parameter
     var fileName = "Failed.csv";
 
     if (!File.Exists(fileName))
+    {
         await File.WriteAllLinesAsync(
                       fileName,
                       failures.Select(Extensions.AsCSVColumn)
@@ -283,26 +287,34 @@ static async Task AuditFailedDownloadsAsync(
                       cancellationToken)
                   .ConfigureAwait(false);
 
-    var availableRecords = File.ReadAllLines(fileName)
-                               .Skip(1)
-                               .Select(s =>
-                               {
-                                   var columns = s.Split(',');
+        return;
+    }
 
-                                   return new Failure(columns[0], columns[2], int.Parse(columns[1]));
-                               });
+    var oldRecords = File.ReadAllLines(fileName)
+                         .Skip(1)
+                         .Select(s =>
+                         {
+                             var columns = s.Split(',');
+                         
+                             var fileFormat = Enum.Parse<FileFormat>(columns[1], true);
+                         
+                             return (failure: new Failure(columns[0], fileFormat, columns[3]),
+                                     retryCount: int.Parse(columns[2]));
+                         });
 
-    var newRecords = availableRecords.Concat(failures)
-                                     .GroupBy(
-                                         x => x.VideoId,
-                                         (key, xs) => xs.MaxBy(x => x.RetryCount)!)
-                                     .Select(Extensions.AsCSVColumn)
-                                     .Prepend(headers);
+    var newRecords = oldRecords.GroupJoin(
+                        failures,
+                        x => (x.failure.VideoId, x.failure.FileFormat),
+                        f => (f.VideoId, f.FileFormat),
+                        (x, xs) =>
+                            (failure: x.failure with { ErrorMessage = xs.Last().ErrorMessage },
+                             retryCount: x.retryCount + xs.Count()));
+
 
     await File.WriteAllLinesAsync(
                   fileName,
-                  failures.Select(Extensions.AsCSVColumn)
-                          .Prepend(headers),
+                  newRecords.Select(x => x.failure.AsCSVColumn(x.retryCount))
+                            .Prepend(headers),
                   cancellationToken)
               .ConfigureAwait(false);
 }
@@ -332,16 +344,25 @@ unsafe static void ConfigureConsole()
     }
 }
 
-internal abstract record DownloadResult(string VideoId)
+public enum FileFormat : byte
 {
-    internal record Success(string VideoId, string FileName, double FileSizeInMB) : DownloadResult(VideoId);
-    internal record Failure(string VideoId, string ErrorMessage, int RetryCount = 0) : DownloadResult(VideoId);
+    MP3,
+    MP4
+}
+
+internal abstract record DownloadResult(string VideoId, FileFormat FileFormat)
+{
+    internal record Success(string VideoId, string FileName, FileFormat FileFormat, double FileSizeInMB) : DownloadResult(VideoId, FileFormat);
+    internal record Failure(string VideoId, FileFormat FileFormat, string ErrorMessage) : DownloadResult(VideoId, FileFormat);
 }
 
 internal static class Extensions
 {
-    public static string AsCSVColumn(this Success self) => $"{self.VideoId},{self.FileName},{self.FileSizeInMB}";
-    public static string AsCSVColumn(this Failure self) => $"{self.VideoId},{self.RetryCount},{self.ErrorMessage}";
+    public static string AsCSVColumn(this Success self) =>
+        $"{self.VideoId},{self.FileName},{self.FileFormat.ToString().ToLower()},{self.FileSizeInMB:F2}";
+
+    public static string AsCSVColumn(this Failure self, int retryCount = 0) =>
+        $"{self.VideoId},{self.FileFormat.ToString().ToLower()},{retryCount},{self.ErrorMessage},";
 }
 
 internal static unsafe partial class ConsoleInterop
