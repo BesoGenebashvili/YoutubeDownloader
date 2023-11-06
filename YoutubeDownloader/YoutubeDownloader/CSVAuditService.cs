@@ -1,4 +1,6 @@
 ﻿using Microsoft.Extensions.Options;
+using System.Globalization;
+using YoutubeExplode.Videos.Streams;
 using static YoutubeDownloader.DownloadResult;
 
 namespace YoutubeDownloader;
@@ -12,6 +14,46 @@ public sealed record CSVSettings(
 public static class CSVAuditExtensions
 {
     private const string CSVTimestampFormat = "yyyy-MM-dd hh:mm:ss";
+
+    private static FileFormat ParseFileFormat(string s) =>
+        Enum.Parse<FileFormat>(s, true);
+
+    private static DateTime ParseTimestamp(string s) =>
+        DateTime.ParseExact(s, CSVTimestampFormat, CultureInfo.InvariantCulture);
+
+    public static Success ParseSuccess(string s) =>
+        s.Split(',') is [{ } videoId, { } fileName, { } fileFormat, { } timestamp, { } fileSizeInMB]
+         ? new(
+             videoId,
+             fileName,
+             ParseFileFormat(fileFormat),
+             ParseTimestamp(timestamp),
+             double.Parse(fileSizeInMB))
+         : throw new CsvDataException($"Error while parsing {nameof(Success)} type");
+
+    public static (Failure failure, uint retryCount) ParseFailure(string s)
+    {
+        switch (s.Split(','))
+        {
+            case [
+            { } videoId,
+            { } fileFormat,
+            { } timestamp,
+            { } errorMessage,
+            { } retryCount]:
+
+                var failure = new Failure(
+                    videoId,
+                    ParseFileFormat(fileFormat),
+                    ParseTimestamp(timestamp),
+                    errorMessage);
+
+                return (failure, uint.Parse(retryCount));
+
+            default:
+                throw new CsvDataException($"Error while parsing {nameof(Failure)} type");
+        }
+    }
 
     public static string ToCSVColumn(this Success self) =>
         $"{self.VideoId},{self.FileFormat.ToString().ToLower()},{self.Timestamp.ToString(CSVTimestampFormat)},{self.FileSizeInMB:F2}";
