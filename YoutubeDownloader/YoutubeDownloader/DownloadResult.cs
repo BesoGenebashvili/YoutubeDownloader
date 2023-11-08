@@ -21,8 +21,3 @@ public abstract record DownloadResult(string VideoId, FileFormat FileFormat, Dat
         DateTime Timestamp,
         string ErrorMessage) : DownloadResult(VideoId, FileFormat, Timestamp);
 }
-
-public static class DownloadResultExtensions
-{
-    private const string CSVTimestampFormat = "yyyy-MM-dd hh:mm:ss";
-}

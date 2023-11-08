@@ -2,6 +2,8 @@
 using YoutubeDownloader;
 using Microsoft.Extensions.Options;
 
+// TODO: Error Handler Middleware
+
 Console.WriteLine("Hello, World!");
 
 ConsoleExtensions.Configure();
