@@ -7,14 +7,14 @@ using Microsoft.Extensions.Options;
 
 namespace YoutubeDownloader;
 
-public sealed record Settings(
+public sealed record DownloaderSettings(
     string SaveFolderPath, 
     string? FFmpegPath);
 
-public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<Settings> options)
+public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<DownloaderSettings> options)
 {
     private readonly YoutubeClient _youtubeClient = youtubeClient;
-    private readonly Settings _settings = options.Value;
+    private readonly DownloaderSettings _settings = options.Value;
 
     private static string ResolveFilename(string title, VideoId videoId)
     {

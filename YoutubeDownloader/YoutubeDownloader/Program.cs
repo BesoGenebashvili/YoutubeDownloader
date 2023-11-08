@@ -1,84 +1,41 @@
-﻿using Spectre.Console;
-using YoutubeDownloader;
-using Microsoft.Extensions.Options;
-
-// TODO: Error Handler Middleware
+﻿using YoutubeDownloader;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection;
+using YoutubeExplode;
 
 Console.WriteLine("Hello, World!");
 
-ConsoleExtensions.Configure();
-FFmpegExtensions.Configure();
+using var host = CreateHostBuilder(args).Build();
+using var scope = host.Services.CreateScope();
 
-var youtubeService = new YoutubeService(new(), Options.Create<Settings>(new("Files", null)));
-IAuditService auditService = new CSVAuditService(Options.Create<CSVSettings>(new(true, true, "Succeed.csv", "Failed.csv")));
+var services = scope.ServiceProvider;
 
-var videoIds = new List<string>
+// TODO: Error Handler Middleware ?
+try
 {
-    "Du2TXMb1IHo",
-    "r_nSu8UOYdo1",
-    "bdWIwpTS48s"
-};
+    ConsoleExtensions.Configure();
+    FFmpegExtensions.Configure();
 
-await AnsiConsole.Progress()
-                 .AutoRefresh(true)
-                 .AutoClear(false)
-                 .HideCompleted(true)
-                 .Columns(
-                 [
-                     new TaskDescriptionColumn(),
-                     new ProgressBarColumn(),
-                     new PercentageColumn(),
-                     new RemainingTimeColumn(),
-                     new SpinnerColumn(Spinner.Known.Point),
-                 ])
-                 .StartAsync(async ctx =>
-                 {
-                     try
-                     {
-                         var downloadTasks = videoIds.Select((Func<string, Task<DownloadResult>>)(async videoId =>
-                         {
+    await services.GetRequiredService<App>()
+                  .RunAsync(args)
+                  .ConfigureAwait(false);
+}
+catch (Exception ex)
+{
+    Console.WriteLine(ex.Message);
+}
 
-                             var downloadTask = ctx.AddTask($"[green]{videoId}[/]");
+static IHostBuilder CreateHostBuilder(string[] args) =>
+    Host.CreateDefaultBuilder(args)
+        .ConfigureServices((host, services) =>
+        {
+            services.AddSingleton<YoutubeClient>();
 
-                             var progress = new Progress<double>(value => downloadTask.Increment(value));
+            services.Configure<DownloaderSettings>(host.Configuration.GetSection(nameof(DownloaderSettings)));
+            services.Configure<CSVSettings>(host.Configuration.GetSection(nameof(CSVSettings)));
 
-                             try
-                             {
-                                 var (fileName, fileSizeInMB) = await youtubeService.DownloadMP3Async(
-                                                          videoId,
-                                                          progress)
-                                                      .ConfigureAwait(false);
+            services.AddTransient<YoutubeService>();
+            services.AddTransient<IAuditService, CSVAuditService>();
 
-                                 return new DownloadResult.Success(
-                                                videoId,
-                                                fileName,
-                                                FileFormat.MP3,
-                                                DateTime.Now,
-                                                fileSizeInMB);
-                             }
-                             catch (Exception ex)
-                             {
-                                 downloadTask.StopTask();
-
-                                 return new DownloadResult.Failure(
-                                                videoId,
-                                                FileFormat.MP3,
-                                                DateTime.Now,
-                                                ex.Message
-                                                  .Replace(',', '.'));
-                             }
-                         }));
-
-                         var downloadResults = await Task.WhenAll(downloadTasks)
-                                                         .ConfigureAwait(false);
-
-                         await auditService.AuditDownloadsAsync(downloadResults).ConfigureAwait(false);
-                     }
-                     catch (Exception ex)
-                     {
-                         await Console.Out.WriteLineAsync($"An error occurred while downloading data: {ex.Message}");
-                     }
-                 }).ConfigureAwait(false);
-
-Console.ReadLine();
-
+            services.AddSingleton<App>();
+        });
