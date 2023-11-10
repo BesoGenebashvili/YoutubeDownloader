@@ -1,16 +1,9 @@
 ﻿using Microsoft.Extensions.Options;
 using System.Globalization;
+using YoutubeDownloader.Settings;
 using static YoutubeDownloader.DownloadResult;
 
 namespace YoutubeDownloader;
-
-public sealed record CSVSettings
-{
-    public bool AuditSuccessful { get; init; }
-    public bool AuditFailed { get; init; }
-    public string SuccessfulDownloadsFilePath { get; init; } = default!;
-    public string FailedDownloadsFilePath { get; init; } = default!;
-}
 
 public static class CSVAuditExtensions
 {

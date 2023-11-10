@@ -4,30 +4,10 @@ using YoutubeExplode.Videos.Streams;
 using YoutubeExplode.Videos;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
-using System.ComponentModel.DataAnnotations;
 using FluentValidation;
+using YoutubeDownloader.Settings;
 
 namespace YoutubeDownloader;
-
-public sealed class DownloaderSettings
-{
-    public const string SectionName = "DownloaderSettings";
-
-    public required string SaveFolderPath { get; init; }
-
-    public string? FFmpegPath { get; init; }
-}
-
-public sealed class DownloaderSettingsValidator : AbstractValidator<DownloaderSettings>
-{
-    public DownloaderSettingsValidator()
-    {
-        // TODO: Custom logic for files
-        RuleFor(s => s.SaveFolderPath)
-            //.NotNull()
-            .NotEmpty();
-    }
-}
 
 public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<DownloaderSettings> options)
 {

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using YoutubeExplode;
 using FluentValidation;
+using YoutubeDownloader.Settings;
 
 Console.WriteLine("Hello, World!");
 
@@ -33,7 +34,7 @@ static IHostBuilder CreateHostBuilder(string[] args) =>
             services.AddValidatorsFromAssemblyContaining<Program>();
 
             services.AddOptions<DownloaderSettings>()
-                    .Bind(host.Configuration.GetSection(DownloaderSettings.SectionName))
+                    .BindConfiguration(DownloaderSettings.SectionName)
                     .ValidateFluently()
                     .ValidateOnStart();
 
