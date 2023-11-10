@@ -4,11 +4,13 @@ using static YoutubeDownloader.DownloadResult;
 
 namespace YoutubeDownloader;
 
-public sealed record CSVSettings(
-    bool AuditSuccessful,
-    bool AuditFailed,
-    string SuccessfulDownloadsFilePath,
-    string FailedDownloadsFilePath);
+public sealed record CSVSettings
+{
+    public bool AuditSuccessful { get; init; }
+    public bool AuditFailed { get; init; }
+    public string SuccessfulDownloadsFilePath { get; init; } = default!;
+    public string FailedDownloadsFilePath { get; init; } = default!;
+}
 
 public static class CSVAuditExtensions
 {
@@ -98,6 +100,8 @@ public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditServi
         IReadOnlyCollection<DownloadResult> downloads,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(downloads, nameof(downloads));
+
         var successes = downloads.OfType<Success>()
                                  .ToList()
                                  .AsReadOnly();

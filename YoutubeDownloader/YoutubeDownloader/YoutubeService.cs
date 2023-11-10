@@ -4,12 +4,30 @@ using YoutubeExplode.Videos.Streams;
 using YoutubeExplode.Videos;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
+using System.ComponentModel.DataAnnotations;
+using FluentValidation;
 
 namespace YoutubeDownloader;
 
-public sealed record DownloaderSettings(
-    string SaveFolderPath, 
-    string? FFmpegPath);
+public sealed class DownloaderSettings
+{
+    public const string SectionName = "DownloaderSettings";
+
+    public required string SaveFolderPath { get; init; }
+
+    public string? FFmpegPath { get; init; }
+}
+
+public sealed class DownloaderSettingsValidator : AbstractValidator<DownloaderSettings>
+{
+    public DownloaderSettingsValidator()
+    {
+        // TODO: Custom logic for files
+        RuleFor(s => s.SaveFolderPath)
+            //.NotNull()
+            .NotEmpty();
+    }
+}
 
 public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<DownloaderSettings> options)
 {
@@ -32,6 +50,8 @@ public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<Downloa
         IProgress<double>? progress = default,
         CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(videoId, nameof(videoId));
+
         var video = await _youtubeClient.Videos
                                         .GetAsync(videoId, cancellationToken)
                                         .ConfigureAwait(false);
@@ -64,6 +84,8 @@ public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<Downloa
         IProgress<double>? progress = default,
         CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(videoId, nameof(videoId));
+
         var video = await _youtubeClient.Videos
                                         .GetAsync(videoId, cancellationToken)
                                         .ConfigureAwait(false);

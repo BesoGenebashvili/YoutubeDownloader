@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using YoutubeExplode;
+using FluentValidation;
 
 Console.WriteLine("Hello, World!");
 
@@ -29,10 +30,16 @@ static IHostBuilder CreateHostBuilder(string[] args) =>
     Host.CreateDefaultBuilder(args)
         .ConfigureServices((host, services) =>
         {
-            services.AddSingleton<YoutubeClient>();
+            services.AddValidatorsFromAssemblyContaining<Program>();
 
-            services.Configure<DownloaderSettings>(host.Configuration.GetSection(nameof(DownloaderSettings)));
+            services.AddOptions<DownloaderSettings>()
+                    .Bind(host.Configuration.GetSection(DownloaderSettings.SectionName))
+                    .ValidateFluently()
+                    .ValidateOnStart();
+
             services.Configure<CSVSettings>(host.Configuration.GetSection(nameof(CSVSettings)));
+
+            services.AddSingleton<YoutubeClient>();
 
             services.AddTransient<YoutubeService>();
             services.AddTransient<IAuditService, CSVAuditService>();
