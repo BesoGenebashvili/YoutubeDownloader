@@ -17,7 +17,8 @@ try
 {
     ConsoleExtensions.Configure();
 
-    using var ffmpegTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+    // TODO: Estimate download time with GetInternetSpeed method
+    using var ffmpegTokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(2));
     await FFmpegExtensions.ConfigureAsync(ffmpegTokenSource.Token);
 
     await services.GetRequiredService<App>()
@@ -46,7 +47,6 @@ static IHostBuilder CreateHostBuilder(string[] args) =>
                     .ValidateOnStart();
 
             services.AddSingleton<YoutubeClient>();
-
             services.AddTransient<YoutubeService>();
             services.AddTransient<IAuditService, CSVAuditService>();
 

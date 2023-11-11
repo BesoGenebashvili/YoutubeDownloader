@@ -25,6 +25,11 @@ public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<Downloa
                      : newFilename;
     }
 
+    public async Task<IReadOnlyCollection<VideoId>> GetVideoIdsFromPlaylistAsync(string playlistLink, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
     public async Task<(string fileName, double fileSizeInMB)> DownloadMP3Async(
         VideoId videoId,
         IProgress<double>? progress = default,

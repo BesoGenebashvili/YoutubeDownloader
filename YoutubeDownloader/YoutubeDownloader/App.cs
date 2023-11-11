@@ -9,13 +9,45 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
 
     public async Task RunAsync(string[] args)
     {
-        // Receive from settings/console
-        var videoIds = new List<string>
-    {
-        "Du2TXMb1IHo",
-        "r_nSu8UOYdo1",
-        "bdWIwpTS48s"
-    };
+        const string FromYouTubeExportedFile = "From YouTube exported file";
+        const string FromPlaylistLink = "From playlist link";
+        const string FromVideoLink = "From video link";
+
+        var downloadOption = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("Select download [green]option[/]:")
+                .AddChoices(
+                [
+                    FromYouTubeExportedFile,
+                    FromPlaylistLink,
+                    FromVideoLink
+                ]));
+
+        // AddChoiceGroup for selecting audio/video quality
+        var downloadFormat = AnsiConsole.Prompt(
+            new SelectionPrompt<AudioFileFormat>()
+                .Title("Select download [green]format[/]:")
+                .AddChoices(
+                [
+                    AudioFileFormat.MP3,
+                    AudioFileFormat.MP4
+                ]));
+
+        // TODO
+        var downloadResults = downloadOption switch
+        {
+            FromYouTubeExportedFile => DownloadFromYouTubeExportedFile(),
+            FromPlaylistLink => DownloadFromPlaylistLink(),
+            FromVideoLink => DownloadFromVideoLink(),
+            _ => throw new NotImplementedException(),
+        };
+
+        // temporary code for testing purposes
+        string[] videoIds = [
+            "Du2TXMb1IHo",
+            "r_nSu8UOYdo1",
+            "bdWIwpTS48s"
+        ];
 
         await AnsiConsole.Progress()
                          .AutoRefresh(true)
@@ -50,7 +82,7 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
                                          return new DownloadResult.Success(
                                                         videoId,
                                                         fileName,
-                                                        FileFormat.MP3,
+                                                        AudioFileFormat.MP3,
                                                         DateTime.Now,
                                                         fileSizeInMB);
                                      }
@@ -60,7 +92,7 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
 
                                          return new DownloadResult.Failure(
                                                         videoId,
-                                                        FileFormat.MP3,
+                                                        AudioFileFormat.MP3,
                                                         DateTime.Now,
                                                         ex.Message
                                                           .Replace(',', '.'));
@@ -78,4 +110,8 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
                              }
                          }).ConfigureAwait(false);
     }
+
+    private object DownloadFromVideoLink() => throw new NotImplementedException();
+    private object DownloadFromPlaylistLink() => throw new NotImplementedException();
+    private object DownloadFromYouTubeExportedFile() => throw new NotImplementedException();
 }

@@ -9,8 +9,8 @@ public static class CSVAuditExtensions
 {
     private const string TimestampFormat = "yyyy-MM-dd hh:mm:ss";
 
-    private static FileFormat ParseFileFormat(string s) =>
-        Enum.Parse<FileFormat>(s, true);
+    private static AudioFileFormat ParseFileFormat(string s) =>
+        Enum.Parse<AudioFileFormat>(s, true);
 
     private static DateTime ParseTimestamp(string s) =>
         DateTime.ParseExact(s, TimestampFormat, CultureInfo.InvariantCulture);
