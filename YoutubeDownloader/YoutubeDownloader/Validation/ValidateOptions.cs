@@ -2,7 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
-namespace YoutubeDownloader;
+namespace YoutubeDownloader.Validation;
 
 public sealed class ValidateOptions<TOptions>(IEnumerable<IValidator<TOptions>> validators)
     : IValidateOptions<TOptions> where TOptions : class

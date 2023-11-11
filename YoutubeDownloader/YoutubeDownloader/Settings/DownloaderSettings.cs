@@ -1,4 +1,5 @@
 ﻿using FluentValidation;
+using YoutubeDownloader.Validation;
 
 namespace YoutubeDownloader.Settings;
 
@@ -14,13 +15,14 @@ public sealed class DownloaderSettingsValidator : AbstractValidator<DownloaderSe
 {
     public DownloaderSettingsValidator()
     {
+        // TODO: use camel case naming convention in error messages
+
         RuleFor(s => s.SaveFolderPath)
             .NotEmpty()
             .MustBeValidFolderPath();
 
-
 #pragma warning disable CS8620
-        // TODO: dotnet/runetime issue #36510
+        // dotnet/runetime issue #36510
         When(s => s.FFmpegPath != string.Empty,
             () => RuleFor(s => s.FFmpegPath)
                       .NotEmpty()

@@ -4,8 +4,7 @@ namespace YoutubeDownloader;
 
 public static class FFmpegExtensions
 {
-    // bool throwIfNotConfigured ?
-    public static async void Configure(CancellationToken cancellationToken = default)
+    public static async Task ConfigureAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -15,10 +14,14 @@ public static class FFmpegExtensions
                 await Console.Out.WriteLineAsync("FFmpeg downloaded successfully");
             }
         }
+        catch (TaskCanceledException)
+        {
+            throw new TaskCanceledException("An operation cancelled while configuring the FFmpeg settings");
+        }
         catch (Exception ex)
         {
             await Console.Out.WriteLineAsync($"An error occurred while configuring the FFmpeg settings: {ex.Message}");
-            // TODO: Log.Error
+            throw;
         }
     }
 

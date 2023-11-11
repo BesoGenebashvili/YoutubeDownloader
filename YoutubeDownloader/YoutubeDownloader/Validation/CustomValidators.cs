@@ -1,7 +1,7 @@
 ﻿using FluentValidation;
 using FluentValidation.Validators;
 
-namespace YoutubeDownloader;
+namespace YoutubeDownloader.Validation;
 
 public class FolderPathValidator<T> : PropertyValidator<T, string>
 {

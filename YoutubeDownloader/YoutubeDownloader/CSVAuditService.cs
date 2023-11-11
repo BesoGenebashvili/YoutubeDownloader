@@ -33,8 +33,8 @@ public static class CSVAuditExtensions
             { } videoId,
             { } fileFormat,
             { } timestamp,
-            { } errorMessage,
-            { } retryCount]:
+            { } retryCount,
+            { } errorMessage]:
 
                 var failure = new Failure(
                     videoId,
@@ -121,6 +121,8 @@ public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditServi
         IReadOnlyCollection<Success> successes,
         CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(_settings.SuccessfulDownloadsFilePath, nameof(_settings.SuccessfulDownloadsFilePath));
+
         // TODO: add "File Absolute Path"
         var headers = string.Join(',', ["Video Id", "File Name", "File Format", "Timestamp", "File Size In MB"]);
 
@@ -141,6 +143,8 @@ public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditServi
         IReadOnlyCollection<Failure> failures,
         CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(_settings.FailedDownloadsFilePath, nameof(_settings.FailedDownloadsFilePath));
+
         var headers = string.Join(',', ["Video Id", "File Format", "Timestamp", "Retry Count", "Error Message"]);
 
         var availableFailedRecords = GetAvailableFailedRecords();
@@ -156,7 +160,7 @@ public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditServi
                              .Prepend(headers);
 
         await File.WriteAllLinesAsync(
-                      _settings.SuccessfulDownloadsFilePath,
+                      _settings.FailedDownloadsFilePath,
                       content,
                       cancellationToken)
                   .ConfigureAwait(false);

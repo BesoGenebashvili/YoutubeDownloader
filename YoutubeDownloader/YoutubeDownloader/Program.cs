@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using YoutubeExplode;
 using FluentValidation;
 using YoutubeDownloader.Settings;
+using YoutubeDownloader.Validation;
 
 Console.WriteLine("Hello, World!");
 
@@ -15,7 +16,9 @@ var services = scope.ServiceProvider;
 try
 {
     ConsoleExtensions.Configure();
-    FFmpegExtensions.Configure();
+
+    using var ffmpegTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+    await FFmpegExtensions.ConfigureAsync(ffmpegTokenSource.Token);
 
     await services.GetRequiredService<App>()
                   .RunAsync(args)
@@ -37,7 +40,10 @@ static IHostBuilder CreateHostBuilder(string[] args) =>
                     .ValidateFluently()
                     .ValidateOnStart();
 
-            services.Configure<CSVSettings>(host.Configuration.GetSection(nameof(CSVSettings)));
+            services.AddOptions<CSVSettings>()
+                    .BindConfiguration(CSVSettings.SectionName)
+                    .ValidateFluently()
+                    .ValidateOnStart();
 
             services.AddSingleton<YoutubeClient>();
 
