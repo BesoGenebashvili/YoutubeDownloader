@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 using FluentValidation;
 using YoutubeDownloader.Settings;
+using YoutubeExplode.Playlists;
 
 namespace YoutubeDownloader;
 
@@ -25,13 +26,22 @@ public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<Downloa
                      : newFilename;
     }
 
-    public async Task<IReadOnlyCollection<VideoId>> GetVideoIdsFromPlaylistAsync(string playlistLink, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<VideoId>> GetVideoIdsFromPlaylistAsync(
+        PlaylistId playlistId,
+        CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var playlistVideos = await _youtubeClient.Playlists
+                                                 .GetVideosAsync(
+                                                      playlistId,
+                                                      cancellationToken)
+                                                 .ToListAsync(cancellationToken);
+
+        return playlistVideos.Select(x => x.Id);
     }
 
     public async Task<(string fileName, double fileSizeInMB)> DownloadMP3Async(
         VideoId videoId,
+        AudioQuality audioQuality = AudioQuality.HighBitrate,
         IProgress<double>? progress = default,
         CancellationToken cancellationToken = default)
     {
@@ -66,6 +76,7 @@ public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<Downloa
 
     public async Task<string> DownloadMP4Async(
         VideoId videoId,
+        VideoQuality videoQuality = VideoQuality.HD,
         IProgress<double>? progress = default,
         CancellationToken cancellationToken = default)
     {

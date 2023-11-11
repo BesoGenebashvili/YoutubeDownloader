@@ -4,8 +4,8 @@ namespace YoutubeDownloader;
 
 public sealed class App(YoutubeService youtubeService, IAuditService auditService)
 {
-    private readonly YoutubeService youtubeService = youtubeService;
-    private readonly IAuditService auditService = auditService;
+    private readonly YoutubeService _youtubeService = youtubeService;
+    private readonly IAuditService _auditService = auditService;
 
     public async Task RunAsync(string[] args)
     {
@@ -23,17 +23,27 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
                     FromVideoLink
                 ]));
 
-        // AddChoiceGroup for selecting audio/video quality
-        var downloadFormat = AnsiConsole.Prompt(
-            new SelectionPrompt<AudioFileFormat>()
-                .Title("Select download [green]format[/]:")
-                .AddChoices(
-                [
-                    AudioFileFormat.MP3,
-                    AudioFileFormat.MP4
-                ]));
+        // TODO: multi-select prompt
+        var downloadFormatAndQuality = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("Select download [green]format & quality[/]:")
+                .AddChoiceGroup(
+                    FileFormat.MP3.ToString(),
+                    [
+                        AudioQuality.LowBitrate.ToString(),
+                        AudioQuality.HighBitrate.ToString()
+                    ])
+                .AddChoiceGroup(
+                    FileFormat.MP4.ToString(),
+                    [
+                        VideoQuality.SD.ToString(),
+                        VideoQuality.HD.ToString(),
+                        VideoQuality.FullHD.ToString()
+                    ]));
 
-        // TODO
+        // TODO switch
+        var (fileFormat, audioQuality, videoQuality) = ParseFileFormatAndQuality(downloadFormatAndQuality);
+
         var downloadResults = downloadOption switch
         {
             FromYouTubeExportedFile => DownloadFromYouTubeExportedFile(),
@@ -74,15 +84,15 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
 
                                      try
                                      {
-                                         var (fileName, fileSizeInMB) = await youtubeService.DownloadMP3Async(
+                                         var (fileName, fileSizeInMB) = await _youtubeService.DownloadMP3Async(
                                                                   videoId,
-                                                                  progress)
+                                                                  progress: progress)
                                                               .ConfigureAwait(false);
 
                                          return new DownloadResult.Success(
                                                         videoId,
                                                         fileName,
-                                                        AudioFileFormat.MP3,
+                                                        FileFormat.MP3,
                                                         DateTime.Now,
                                                         fileSizeInMB);
                                      }
@@ -92,7 +102,7 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
 
                                          return new DownloadResult.Failure(
                                                         videoId,
-                                                        AudioFileFormat.MP3,
+                                                        FileFormat.MP3,
                                                         DateTime.Now,
                                                         ex.Message
                                                           .Replace(',', '.'));
@@ -102,13 +112,19 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
                                  var downloadResults = await Task.WhenAll(downloadTasks)
                                                                  .ConfigureAwait(false);
 
-                                 await auditService.AuditDownloadsAsync(downloadResults).ConfigureAwait(false);
+                                 await _auditService.AuditDownloadsAsync(downloadResults).ConfigureAwait(false);
                              }
                              catch (Exception ex)
                              {
                                  await Console.Out.WriteLineAsync($"An error occurred while downloading data: {ex.Message}");
                              }
                          }).ConfigureAwait(false);
+
+        // TODO: implement Either<TLeft, TRight>
+        (FileFormat fileFormat, AudioQuality? audioQuality, VideoQuality? videoQuality) ParseFileFormatAndQuality(string s) =>
+            Enum.TryParse<AudioQuality>(s, out var audioQuality)
+                ? (FileFormat.MP3, audioQuality, null)
+                : (FileFormat.MP4, null, Enum.Parse<VideoQuality>(s));
     }
 
     private object DownloadFromVideoLink() => throw new NotImplementedException();
