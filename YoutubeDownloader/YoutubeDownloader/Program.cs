@@ -12,7 +12,6 @@ using var scope = host.Services.CreateScope();
 
 var services = scope.ServiceProvider;
 
-// TODO: Error Handler Middleware ?
 try
 {
     ConsoleExtensions.Configure();
