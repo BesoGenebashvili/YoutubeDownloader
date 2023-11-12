@@ -41,7 +41,18 @@ public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<Downloa
         return playlistVideos.Select(x => x.Id);
     }
 
-    public async Task<(string fileName, double fileSizeInMB)> DownloadMP3Async(
+    // TODO: refactor
+    public Task<(string fileName, double fileSizeInMB)> DownloadAsync(
+        DownloadContext downloadContext,
+        IProgress<double>? progress = default,
+        CancellationToken cancellationToken = default) => downloadContext switch
+        {
+            DownloadContext.MP3 mp3 => DownloadMP3Async(mp3, progress, cancellationToken),
+            DownloadContext.MP4 mp4 => DownloadMP4Async(mp4, progress, cancellationToken),
+            _ => throw new NotImplementedException(nameof(downloadContext))
+        };
+
+    private async Task<(string fileName, double fileSizeInMB)> DownloadMP3Async(
         DownloadContext.MP3 downloadContext,
         IProgress<double>? progress = default,
         CancellationToken cancellationToken = default)
@@ -52,7 +63,9 @@ public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<Downloa
 
         var streamManifest = await _youtubeClient.Videos
                                                  .Streams
-                                                 .GetManifestAsync(downloadContext.VideoId, cancellationToken)
+                                                 .GetManifestAsync(
+                                                     downloadContext.VideoId, 
+                                                     cancellationToken)
                                                  .ConfigureAwait(false);
 
         var audioOnlyStreamInfos = streamManifest.GetAudioOnlyStreams();
@@ -79,7 +92,7 @@ public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<Downloa
         return (fileName, streamInfo.Size.MegaBytes);
     }
 
-    public async Task<string> DownloadMP4Async(
+    private async Task<(string fileName, double fileSizeInMB)> DownloadMP4Async(
         DownloadContext.MP4 downloadContext,
         IProgress<double>? progress = default,
         CancellationToken cancellationToken = default)
@@ -106,11 +119,11 @@ public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<Downloa
             _ => throw new NotImplementedException(nameof(downloadContext.VideoQuality)),
         };
 
-        await downloadTask.ConfigureAwait(false);
+        var fileSizeInMB = await downloadTask.ConfigureAwait(false);
 
-        return fileName;
+        return (fileName, fileSizeInMB);
 
-        async Task DownloadMuxedStreamAsync(string qualityLabel)
+        async Task<double> DownloadMuxedStreamAsync(string qualityLabel)
         {
             var muxedStreamInfos = streamManifest.GetMuxedStreams()
                                                  .Where(s => s.Container == Container.Mp4)
@@ -130,9 +143,11 @@ public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<Downloa
                                      progress,
                                      cancellationToken)
                                 .ConfigureAwait(false);
+
+            return streamInfo.Size.MegaBytes;
         }
 
-        async Task DownloadSeparateStreamsAsync()
+        async Task<double> DownloadSeparateStreamsAsync()
         {
             var audioStreamInfo = streamManifest.GetAudioStreams()
                                                 .Where(s => s.Container == Container.Mp4)
@@ -162,6 +177,8 @@ public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<Downloa
                                      progress,
                                      cancellationToken)
                                 .ConfigureAwait(false);
+
+            return audioStreamInfo.Size.MegaBytes + videoStreamInfo.Size.MegaBytes;
         }
     }
 }
