@@ -1,4 +1,6 @@
 ﻿using Spectre.Console;
+using YoutubeDownloader.Models;
+using YoutubeExplode.Videos;
 
 namespace YoutubeDownloader;
 
@@ -9,6 +11,9 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
 
     public async Task RunAsync(string[] args)
     {
+        await _youtubeService.DownloadMP4Async(new("Du2TXMb1IHo", VideoQuality.FullHD));
+        return;
+
         const string FromYouTubeExportedFile = "From YouTube exported file";
         const string FromPlaylistLink = "From playlist link";
         const string FromVideoLink = "From video link";
@@ -85,7 +90,7 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
                                      try
                                      {
                                          var (fileName, fileSizeInMB) = await _youtubeService.DownloadMP3Async(
-                                                                  videoId,
+                                                                  new(videoId),
                                                                   progress: progress)
                                                               .ConfigureAwait(false);
 
@@ -127,7 +132,11 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
                 : (FileFormat.MP4, null, Enum.Parse<VideoQuality>(s));
     }
 
-    private object DownloadFromVideoLink() => throw new NotImplementedException();
+    private object DownloadFromVideoLink()
+    {
+        throw new NotImplementedException();
+    }
+
     private object DownloadFromPlaylistLink() => throw new NotImplementedException();
     private object DownloadFromYouTubeExportedFile() => throw new NotImplementedException();
 }

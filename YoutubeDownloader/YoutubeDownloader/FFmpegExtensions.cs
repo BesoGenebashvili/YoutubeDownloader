@@ -2,6 +2,12 @@
 
 namespace YoutubeDownloader;
 
+internal enum OperatingSystem : byte
+{
+    Windows,
+    Linux
+}
+
 public static class FFmpegExtensions
 {
     public static async Task ConfigureAsync(CancellationToken cancellationToken = default)
@@ -10,7 +16,14 @@ public static class FFmpegExtensions
         {
             if (!IsFFmpegAvailable())
             {
-                await DownloadFFmpegAsync(cancellationToken).ConfigureAwait(false);
+                var operatingSystem = System.OperatingSystem.IsWindows()
+                                          ? OperatingSystem.Windows
+                                          : System.OperatingSystem.IsLinux()
+                                                ? OperatingSystem.Linux
+                                                : throw new ApplicationException("OS not supported");
+
+                await DownloadFFmpegAsync(operatingSystem, cancellationToken).ConfigureAwait(false);
+
                 await Console.Out.WriteLineAsync("FFmpeg downloaded successfully");
             }
         }
@@ -25,16 +38,19 @@ public static class FFmpegExtensions
         }
     }
 
-    private static string GetFFmpegFileName() =>
-        OperatingSystem.IsWindows()
-                       ? "ffmpeg.exe"
-                       : "ffmpeg";
+    private static bool IsFFmpegExistInDirectory() =>
+        Directory.EnumerateFiles(AppDomain.CurrentDomain.BaseDirectory ?? Directory.GetCurrentDirectory())
+                 .Any(f => Path.GetFileNameWithoutExtension(f)
+                               .Equals("ffmpeg", StringComparison.OrdinalIgnoreCase));
 
-    private static bool IsFFmpegAvailable() =>
-        File.Exists(GetFFmpegFileName()) ||
+    private static bool IsFFmpegExistInEnvironmentVariables() =>
         Environment.GetEnvironmentVariable("ffmpeg") is not null;
 
-    private static async Task DownloadFFmpegAsync(CancellationToken cancellationToken = default)
+    private static bool IsFFmpegAvailable() => IsFFmpegExistInDirectory() || IsFFmpegExistInEnvironmentVariables();
+
+    private static async Task DownloadFFmpegAsync(
+        OperatingSystem operatingSystem,
+        CancellationToken cancellationToken = default)
     {
         var releaseUrl = GetDownloadUrl();
 
@@ -44,7 +60,7 @@ public static class FFmpegExtensions
 
         using var zip = new ZipArchive(stream, ZipArchiveMode.Read);
 
-        var ffmpegFileName = GetFFmpegFileName();
+        var ffmpegFileName = GetFFmpegFileName(operatingSystem);
 
         var ffmpegFilePath = Path.Combine(Environment.CurrentDirectory, ffmpegFileName);
 
@@ -56,22 +72,20 @@ public static class FFmpegExtensions
 
         await zipEntryStream.CopyToAsync(fileStream, cancellationToken);
 
-        static string GetDownloadUrl()
+        string GetFFmpegFileName(OperatingSystem operatingSystem) => operatingSystem switch
         {
-            var is64BitOS = Environment.Is64BitOperatingSystem;
+            OperatingSystem.Windows => "ffmpeg.exe",
+            OperatingSystem.Linux => "ffmpeg",
+            _ => throw new NotImplementedException(nameof(operatingSystem)),
+        };
 
-            if (OperatingSystem.IsWindows())
-            {
-                return is64BitOS ? "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-win-64.zip"
-                                 : "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.2.1/ffmpeg-4.2.1-win-32.zip";
-            }
-            else if (OperatingSystem.IsLinux())
-            {
-                return is64BitOS ? "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-linux-64.zip"
-                                 : "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-linux-32.zip";
-            }
-
-            throw new NotImplementedException("Unknown IOS");
-        }
+        string GetDownloadUrl() => (operatingSystem, Environment.Is64BitOperatingSystem) switch
+        {
+            (OperatingSystem.Windows, true) => "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-win-64.zip",
+            (OperatingSystem.Windows, false) => "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.2.1/ffmpeg-4.2.1-win-32.zip",
+            (OperatingSystem.Linux, true) => "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-linux-64.zip",
+            (OperatingSystem.Linux, false) => "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-linux-32.zip",
+            _ => throw new NotImplementedException(nameof(operatingSystem)),
+        };
     }
 }

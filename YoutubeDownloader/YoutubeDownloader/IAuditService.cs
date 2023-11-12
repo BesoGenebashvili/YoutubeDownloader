@@ -1,4 +1,6 @@
-﻿namespace YoutubeDownloader;
+﻿using YoutubeDownloader.Models;
+
+namespace YoutubeDownloader;
 
 public interface IAuditService
 {

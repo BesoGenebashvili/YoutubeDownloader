@@ -1,12 +1,14 @@
 ﻿using YoutubeExplode;
 using YoutubeExplode.Converter;
-using YoutubeExplode.Videos.Streams;
 using YoutubeExplode.Videos;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 using FluentValidation;
 using YoutubeDownloader.Settings;
 using YoutubeExplode.Playlists;
+using YoutubeExplode.Videos.Streams;
+using YoutubeDownloader.Models;
+using VideoQuality = YoutubeDownloader.Models.VideoQuality;
 
 namespace YoutubeDownloader;
 
@@ -40,26 +42,29 @@ public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<Downloa
     }
 
     public async Task<(string fileName, double fileSizeInMB)> DownloadMP3Async(
-        VideoId videoId,
-        AudioQuality audioQuality = AudioQuality.HighBitrate,
+        DownloadContext.MP3 downloadContext,
         IProgress<double>? progress = default,
         CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(videoId, nameof(videoId));
-
         var video = await _youtubeClient.Videos
-                                        .GetAsync(videoId, cancellationToken)
+                                        .GetAsync(downloadContext.VideoId, cancellationToken)
                                         .ConfigureAwait(false);
 
         var streamManifest = await _youtubeClient.Videos
                                                  .Streams
-                                                 .GetManifestAsync(videoId, cancellationToken)
+                                                 .GetManifestAsync(downloadContext.VideoId, cancellationToken)
                                                  .ConfigureAwait(false);
 
-        var streamInfo = streamManifest.GetAudioOnlyStreams()
-                                       .GetWithHighestBitrate();
+        var audioOnlyStreamInfos = streamManifest.GetAudioOnlyStreams();
 
-        var fileName = ResolveFilename(video.Title, videoId);
+        var streamInfo = downloadContext.AudioQuality switch
+        {
+            AudioQuality.LowBitrate => audioOnlyStreamInfos.MinBy(a => a.Bitrate) ?? throw new InvalidOperationException("Input stream collection is empty."),
+            AudioQuality.HighBitrate => audioOnlyStreamInfos.GetWithHighestBitrate(),
+            _ => throw new NotImplementedException(nameof(downloadContext.AudioQuality))
+        };
+
+        var fileName = ResolveFilename(video.Title, downloadContext.VideoId);
         var filePath = Path.Combine(_settings.SaveFolderPath, $"{fileName}.mp3");
 
         await _youtubeClient.Videos
@@ -75,51 +80,88 @@ public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<Downloa
     }
 
     public async Task<string> DownloadMP4Async(
-        VideoId videoId,
-        VideoQuality videoQuality = VideoQuality.HD,
+        DownloadContext.MP4 downloadContext,
         IProgress<double>? progress = default,
         CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(videoId, nameof(videoId));
-
         var video = await _youtubeClient.Videos
-                                        .GetAsync(videoId, cancellationToken)
+                                        .GetAsync(downloadContext.VideoId, cancellationToken)
                                         .ConfigureAwait(false);
 
         var streamManifest = await _youtubeClient.Videos
                                                  .Streams
                                                  .GetManifestAsync(
-                                                     videoId,
+                                                     downloadContext.VideoId,
                                                      cancellationToken)
                                                  .ConfigureAwait(false);
 
-        var audioStreamInfo = streamManifest.GetAudioStreams()
-                                            .Where(s => s.Container == Container.Mp4)
-                                            .GetWithHighestBitrate();
-
-        var videoStreamInfo = streamManifest.GetVideoStreams()
-                                            .Where(s => s.Container == Container.Mp4)
-                                            .GetWithHighestVideoQuality();
-
-        var fileName = ResolveFilename(video.Title, videoId);
+        var fileName = ResolveFilename(video.Title, downloadContext.VideoId);
         var filePath = Path.Combine(_settings.SaveFolderPath, $"{fileName}.mp4");
 
-        var streamInfos = new IStreamInfo[]
+        var downloadTask = downloadContext.VideoQuality switch
         {
-            audioStreamInfo,
-            videoStreamInfo
+            VideoQuality.SD => DownloadMuxedStreamAsync("480p"),
+            VideoQuality.HD => DownloadMuxedStreamAsync("720p"),
+            VideoQuality.FullHD => DownloadSeparateStreamsAsync(),
+            _ => throw new NotImplementedException(nameof(downloadContext.VideoQuality)),
         };
 
-        await _youtubeClient.Videos
-                            .DownloadAsync(
-                                 streamInfos,
-                                 new ConversionRequestBuilder(filePath)
-                                         .SetFFmpegPath(_settings.SaveFolderPath)
-                                         .Build(),
-                                 progress,
-                                 cancellationToken: cancellationToken)
-                            .ConfigureAwait(false);
+        await downloadTask.ConfigureAwait(false);
 
         return fileName;
+
+        async Task DownloadMuxedStreamAsync(string qualityLabel)
+        {
+            var muxedStreamInfos = streamManifest.GetMuxedStreams()
+                                                 .Where(s => s.Container == Container.Mp4)
+                                                 .OrderByDescending(s => s.VideoQuality);
+
+            // TODO: Refactor
+            var streamInfo = muxedStreamInfos.FirstOrDefault(s => s.VideoQuality.Label == qualityLabel)
+                                             ?? muxedStreamInfos.First(
+                                                    s => s.VideoQuality.Label != "720p"
+                                                      && s.VideoQuality.Label != qualityLabel);
+
+            await _youtubeClient.Videos
+                                .Streams
+                                .DownloadAsync(
+                                     streamInfo,
+                                     filePath,
+                                     progress,
+                                     cancellationToken)
+                                .ConfigureAwait(false);
+        }
+
+        async Task DownloadSeparateStreamsAsync()
+        {
+            var audioStreamInfo = streamManifest.GetAudioStreams()
+                                                .Where(s => s.Container == Container.Mp4)
+                                                .GetWithHighestBitrate();
+
+            var videoStreamInfo = streamManifest.GetVideoStreams()
+                                                .Where(s => s.Container == Container.Mp4)
+                                                .GetWithHighestVideoQuality();
+
+            var streamInfos = new IStreamInfo[]
+            {
+                audioStreamInfo,
+                videoStreamInfo
+            };
+
+            var conversionRequestBuilder = new ConversionRequestBuilder(filePath);
+
+            if (!string.IsNullOrWhiteSpace(_settings.FFmpegPath))
+            {
+                conversionRequestBuilder.SetFFmpegPath(_settings.FFmpegPath);
+            }
+
+            await _youtubeClient.Videos
+                                .DownloadAsync(
+                                     streamInfos,
+                                     conversionRequestBuilder.Build(),
+                                     progress,
+                                     cancellationToken)
+                                .ConfigureAwait(false);
+        }
     }
 }

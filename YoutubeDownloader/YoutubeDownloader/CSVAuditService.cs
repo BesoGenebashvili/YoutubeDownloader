@@ -1,7 +1,8 @@
 ﻿using Microsoft.Extensions.Options;
 using System.Globalization;
+using YoutubeDownloader.Models;
 using YoutubeDownloader.Settings;
-using static YoutubeDownloader.DownloadResult;
+using static YoutubeDownloader.Models.DownloadResult;
 
 namespace YoutubeDownloader;
 
