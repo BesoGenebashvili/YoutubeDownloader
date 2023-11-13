@@ -2,6 +2,13 @@
 
 namespace YoutubeDownloader.Models;
 
+public enum DownloadOption : byte
+{
+    FromYouTubeExportedFile,
+    FromPlaylistLink,
+    FromVideoLink
+}
+
 public enum FileFormat : byte
 {
     MP3,
