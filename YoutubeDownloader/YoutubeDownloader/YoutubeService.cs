@@ -41,59 +41,8 @@ public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<Downloa
         return playlistVideos.Select(x => x.Id);
     }
 
-    // TODO: refactor
-    public Task<(string fileName, double fileSizeInMB)> DownloadAsync(
+    public async Task<DownloadResult.Success> DownloadAsync(
         DownloadContext downloadContext,
-        IProgress<double>? progress = default,
-        CancellationToken cancellationToken = default) => downloadContext switch
-        {
-            DownloadContext.MP3 mp3 => DownloadMP3Async(mp3, progress, cancellationToken),
-            DownloadContext.MP4 mp4 => DownloadMP4Async(mp4, progress, cancellationToken),
-            _ => throw new NotImplementedException(nameof(downloadContext))
-        };
-
-    private async Task<(string fileName, double fileSizeInMB)> DownloadMP3Async(
-        DownloadContext.MP3 downloadContext,
-        IProgress<double>? progress = default,
-        CancellationToken cancellationToken = default)
-    {
-        var video = await _youtubeClient.Videos
-                                        .GetAsync(downloadContext.VideoId, cancellationToken)
-                                        .ConfigureAwait(false);
-
-        var streamManifest = await _youtubeClient.Videos
-                                                 .Streams
-                                                 .GetManifestAsync(
-                                                     downloadContext.VideoId, 
-                                                     cancellationToken)
-                                                 .ConfigureAwait(false);
-
-        var audioOnlyStreamInfos = streamManifest.GetAudioOnlyStreams();
-
-        var streamInfo = downloadContext.AudioQuality switch
-        {
-            AudioQuality.LowBitrate => audioOnlyStreamInfos.MinBy(a => a.Bitrate) ?? throw new InvalidOperationException("Input stream collection is empty."),
-            AudioQuality.HighBitrate => audioOnlyStreamInfos.GetWithHighestBitrate(),
-            _ => throw new NotImplementedException(nameof(downloadContext.AudioQuality))
-        };
-
-        var fileName = ResolveFilename(video.Title, downloadContext.VideoId);
-        var filePath = Path.Combine(_settings.SaveFolderPath, $"{fileName}.mp3");
-
-        await _youtubeClient.Videos
-                            .Streams
-                            .DownloadAsync(
-                                 streamInfo,
-                                 filePath,
-                                 progress,
-                                 cancellationToken: cancellationToken)
-                            .ConfigureAwait(false);
-
-        return (fileName, streamInfo.Size.MegaBytes);
-    }
-
-    private async Task<(string fileName, double fileSizeInMB)> DownloadMP4Async(
-        DownloadContext.MP4 downloadContext,
         IProgress<double>? progress = default,
         CancellationToken cancellationToken = default)
     {
@@ -109,19 +58,76 @@ public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<Downloa
                                                  .ConfigureAwait(false);
 
         var fileName = ResolveFilename(video.Title, downloadContext.VideoId);
-        var filePath = Path.Combine(_settings.SaveFolderPath, $"{fileName}.mp4");
 
-        var downloadTask = downloadContext.VideoQuality switch
+        var downloadTask = downloadContext switch
+        {
+            DownloadContext.MP3(_, AudioQuality quality) =>
+                DownloadMP3Async(
+                    Path.Combine(_settings.SaveFolderPath, $"{fileName}.mp3"),
+                    quality,
+                    streamManifest,
+                    progress,
+                    cancellationToken),
+
+            DownloadContext.MP4(_, VideoQuality quality) =>
+                DownloadMP4Async(
+                    Path.Combine(_settings.SaveFolderPath, $"{fileName}.mp4"),
+                    quality,
+                    streamManifest,
+                    progress,
+                    cancellationToken),
+            _ => throw new NotImplementedException(nameof(downloadContext))
+        };
+
+        var fileSizeInMb = await downloadTask.ConfigureAwait(false);
+
+        return downloadContext.Success(fileName, fileSizeInMb);
+    }
+
+    private async Task<double> DownloadMP3Async(
+        string filePath,
+        AudioQuality quality,
+        StreamManifest streamManifest,
+        IProgress<double>? progress = default,
+        CancellationToken cancellationToken = default)
+    {
+        var audioOnlyStreamInfos = streamManifest.GetAudioOnlyStreams();
+
+        var streamInfo = quality switch
+        {
+            AudioQuality.LowBitrate => audioOnlyStreamInfos.MinBy(a => a.Bitrate) ?? throw new InvalidOperationException("Input stream collection is empty."),
+            AudioQuality.HighBitrate => audioOnlyStreamInfos.GetWithHighestBitrate(),
+            _ => throw new NotImplementedException(nameof(quality))
+        };
+
+        await _youtubeClient.Videos
+                            .Streams
+                            .DownloadAsync(
+                                 streamInfo,
+                                 filePath,
+                                 progress,
+                                 cancellationToken: cancellationToken)
+                            .ConfigureAwait(false);
+
+        return streamInfo.Size.MegaBytes;
+    }
+
+    private async Task<double> DownloadMP4Async(
+        string filePath,
+        VideoQuality quality,
+        StreamManifest streamManifest,
+        IProgress<double>? progress = default,
+        CancellationToken cancellationToken = default)
+    {
+        var downloadTask = quality switch
         {
             VideoQuality.SD => DownloadMuxedStreamAsync("480p"),
             VideoQuality.HD => DownloadMuxedStreamAsync("720p"),
             VideoQuality.FullHD => DownloadSeparateStreamsAsync(),
-            _ => throw new NotImplementedException(nameof(downloadContext.VideoQuality)),
+            _ => throw new NotImplementedException(nameof(quality))
         };
 
-        var fileSizeInMB = await downloadTask.ConfigureAwait(false);
-
-        return (fileName, fileSizeInMB);
+        return await downloadTask.ConfigureAwait(false);
 
         async Task<double> DownloadMuxedStreamAsync(string qualityLabel)
         {

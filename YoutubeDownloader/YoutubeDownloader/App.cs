@@ -47,26 +47,17 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
         {
             var downloadTasks = downloadContexts.Select<DownloadContext, Task<DownloadResult>>(async downloadContext =>
             {
-                var fileFormat = downloadContext switch
-                {
-                    DownloadContext.MP3 => FileFormat.MP3,
-                    DownloadContext.MP4 => FileFormat.MP4,
-                    _ => throw new NotImplementedException(nameof(downloadContext))
-                };
-
                 var downloadTask = progressContext.AddTask($"[green]{downloadContext.VideoId}[/]");
 
                 var progress = new Progress<double>(value => downloadTask.Increment(value));
 
                 try
                 {
-                    var (fileName, fileSizeInMB) = await _youtubeService.DownloadAsync(
-                                                                            downloadContext,
-                                                                            progress,
-                                                                            cancellationToken)
-                                                                        .ConfigureAwait(false);
-
-                    return downloadContext.Success(fileName, fileSizeInMB);
+                    return await _youtubeService.DownloadAsync(
+                                                     downloadContext,
+                                                     progress,
+                                                     cancellationToken)
+                                                 .ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {

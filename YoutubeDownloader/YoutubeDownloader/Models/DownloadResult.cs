@@ -22,7 +22,7 @@ public abstract record DownloadResult(VideoId VideoId, FileFormat FileFormat, Da
 //TODO: this should not be here
 public static class DownloadResultExtensions
 {
-    private static FileFormat GetFileFormat(this DownloadContext downloadContext) => downloadContext switch
+    public static FileFormat GetFileFormat(this DownloadContext downloadContext) => downloadContext switch
     {
         DownloadContext.MP3 => FileFormat.MP3,
         DownloadContext.MP4 => FileFormat.MP4,
