@@ -4,9 +4,16 @@ namespace YoutubeDownloader.Models;
 
 public enum DownloadOption : byte
 {
-    FromYouTubeExportedFile,
+    FromVideoLink,
     FromPlaylistLink,
-    FromVideoLink
+    FromYouTubeExportedFile,
+    FromFailedDownloads
+}
+
+public enum FailedDownloadResendSetting : byte
+{
+    KeepOriginal,
+    OverrideWithNew
 }
 
 public enum FileFormat : byte

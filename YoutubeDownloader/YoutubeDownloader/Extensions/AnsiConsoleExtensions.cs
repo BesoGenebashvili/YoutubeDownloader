@@ -7,6 +7,24 @@ namespace YoutubeDownloader.Extensions;
 
 public static class AnsiConsoleExtensions
 {
+    public static FailedDownloadResendSetting SelectFailedDownloadResendSettings(FailedDownloadResendSetting[] settings)
+    {
+        var settingsLookup = settings.ToLookup(setting => setting switch
+        {
+            FailedDownloadResendSetting.KeepOriginal => "Keep original",
+            FailedDownloadResendSetting.OverrideWithNew => "Override with new",
+            _ => throw new NotImplementedException(nameof(setting))
+        });
+
+        var selectedOption =
+            AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("Select download [green]format & quality[/] setting:")
+                    .AddChoices(settingsLookup.Select(x => x.Key)));
+
+        return settingsLookup[selectedOption].First();
+    }
+
     public static string PromptExportedFilePath() =>
         AnsiConsole.Prompt(
             new TextPrompt<string>("Enter [green]exported file[/] path:")

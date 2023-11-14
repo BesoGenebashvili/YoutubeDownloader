@@ -18,19 +18,21 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
 
         var downloadOption = AnsiConsoleExtensions.SelectDownloadOption(
             [
-                DownloadOption.FromYouTubeExportedFile,
+                DownloadOption.FromVideoLink,
                 DownloadOption.FromPlaylistLink,
-                DownloadOption.FromVideoLink
+                DownloadOption.FromYouTubeExportedFile,
+                DownloadOption.FromFailedDownloads
             ]);
 
         var getDownloadContext = AnsiConsoleExtensions.SelectDownloadContext();
 
         var downloadTask = downloadOption switch
         {
-            DownloadOption.FromYouTubeExportedFile => DownloadFromYouTubeExportedFile(getDownloadContext, cancellationToken),
-            DownloadOption.FromPlaylistLink => DownloadFromPlaylistLink(getDownloadContext, cancellationToken),
             DownloadOption.FromVideoLink => DownloadFromVideoLinkAsync(getDownloadContext, cancellationToken),
-            _ => throw new NotImplementedException(),
+            DownloadOption.FromPlaylistLink => DownloadFromPlaylistLinkAsync(getDownloadContext, cancellationToken),
+            DownloadOption.FromYouTubeExportedFile => DownloadFromYouTubeExportedFileAsync(getDownloadContext, cancellationToken),
+            DownloadOption.FromFailedDownloads => DownloadFromFromFailedDownloads(getDownloadContext, cancellationToken),
+            _ => throw new NotImplementedException()
         };
 
         var downloadResults = await downloadTask.ConfigureAwait(false);
@@ -79,7 +81,35 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
         }
     }
 
-    private async Task<IEnumerable<DownloadResult>> DownloadFromYouTubeExportedFile(
+    private async Task<IEnumerable<DownloadResult>> DownloadFromVideoLinkAsync(
+        Func<VideoId, DownloadContext> getDownloadContext,
+        CancellationToken cancellationToken = default)
+    {
+        var videoId = AnsiConsoleExtensions.PromptVideoId();
+
+        var downloadContext = getDownloadContext(videoId);
+
+        return await AnsiConsoleExtensions.ShowProgressAsync(async ctx => await DownloadAsync([downloadContext], ctx).ConfigureAwait(false))
+                                          .ConfigureAwait(false);
+    }
+
+    private async Task<IEnumerable<DownloadResult>> DownloadFromPlaylistLinkAsync(
+        Func<VideoId, DownloadContext> getDownloadContext,
+        CancellationToken cancellationToken = default)
+    {
+        var playlistId = AnsiConsoleExtensions.PromptPlaylistId();
+
+        var videoIds = await _youtubeService.GetVideoIdsFromPlaylistAsync(playlistId, cancellationToken);
+
+        var downloadContext = videoIds.Select(getDownloadContext)
+                                      .ToList()
+                                      .AsReadOnly();
+
+        return await AnsiConsoleExtensions.ShowProgressAsync(ctx => DownloadAsync(downloadContext, ctx))
+                                          .ConfigureAwait(false);
+    }
+
+    private async Task<IEnumerable<DownloadResult>> DownloadFromYouTubeExportedFileAsync(
         Func<VideoId, DownloadContext> getDownloadContext,
         CancellationToken cancellationToken = default)
     {
@@ -103,31 +133,10 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
                 .Trim();
     }
 
-    private async Task<IEnumerable<DownloadResult>> DownloadFromPlaylistLink(
+    private Task<IEnumerable<DownloadResult>> DownloadFromFromFailedDownloads(
         Func<VideoId, DownloadContext> getDownloadContext,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
-        var playlistId = AnsiConsoleExtensions.PromptPlaylistId();
-
-        var videoIds = await _youtubeService.GetVideoIdsFromPlaylistAsync(playlistId, cancellationToken);
-
-        var downloadContext = videoIds.Select(getDownloadContext)
-                                      .ToList()
-                                      .AsReadOnly();
-
-        return await AnsiConsoleExtensions.ShowProgressAsync(ctx => DownloadAsync(downloadContext, ctx))
-                                          .ConfigureAwait(false);
-    }
-
-    private async Task<IEnumerable<DownloadResult>> DownloadFromVideoLinkAsync(
-        Func<VideoId, DownloadContext> getDownloadContext,
-        CancellationToken cancellationToken = default)
-    {
-        var videoId = AnsiConsoleExtensions.PromptVideoId();
-
-        var downloadContext = getDownloadContext(videoId);
-
-        return await AnsiConsoleExtensions.ShowProgressAsync(async ctx => await DownloadAsync([downloadContext], ctx).ConfigureAwait(false))
-                                          .ConfigureAwait(false);
+        throw new NotImplementedException();
     }
 }
