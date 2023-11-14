@@ -65,9 +65,10 @@ public static class AnsiConsoleExtensions
     {
         var optionsLookup = options.ToLookup(option => option switch
         {
-            DownloadOption.FromYouTubeExportedFile => "From YouTube exported file",
-            DownloadOption.FromPlaylistLink => "From playlist link",
             DownloadOption.FromVideoLink => "From video link",
+            DownloadOption.FromPlaylistLink => "From playlist link",
+            DownloadOption.FromYouTubeExportedFile => "From YouTube exported file",
+            DownloadOption.FromFailedDownloads => "From failed",
             _ => throw new NotImplementedException(nameof(option))
         });
 

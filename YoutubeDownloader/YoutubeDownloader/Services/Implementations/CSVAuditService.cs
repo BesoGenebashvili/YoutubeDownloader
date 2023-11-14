@@ -39,6 +39,25 @@ public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditServi
         // Log
     }
 
+    public Task<IReadOnlyCollection<Success>> ListSuccessfulDownloads(CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public async Task<IReadOnlyCollection<Failure>> ListFailedDownloadsAsync(CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(_settings.FailedDownloadsFilePath, nameof(_settings.FailedDownloadsFilePath));
+
+        var lines = await File.ReadAllLinesAsync(_settings.FailedDownloadsFilePath, cancellationToken)
+                              .ConfigureAwait(false);
+
+        return lines.Skip(1)
+                    .Where(l => !string.IsNullOrWhiteSpace(l))
+                    .Select(l => CSVAuditExtensions.ParseFailure(l).failure)
+                    .ToList()
+                    .AsReadOnly();
+    }
+
     private async Task AuditSuccessfulDownloadsAsync(
         IReadOnlyCollection<Success> successes,
         CancellationToken cancellationToken = default)
