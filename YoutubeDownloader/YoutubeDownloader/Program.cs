@@ -18,7 +18,7 @@ try
     ConsoleExtensions.Configure();
 
     // TODO: Estimate download time with GetInternetSpeed method
-    using var ffmpegTokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+    using var ffmpegTokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(3));
     await FFmpegExtensions.ConfigureAsync(ffmpegTokenSource.Token);
 
     await services.GetRequiredService<App>()

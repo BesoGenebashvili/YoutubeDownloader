@@ -22,6 +22,8 @@ public static class FFmpegExtensions
                                                 ? OperatingSystem.Linux
                                                 : throw new ApplicationException("OS not supported");
 
+                await Console.Out.WriteLineAsync($"Downloading FFmpeg for {operatingSystem}");
+
                 await DownloadFFmpegAsync(operatingSystem, cancellationToken).ConfigureAwait(false);
 
                 await Console.Out.WriteLineAsync("FFmpeg downloaded successfully");

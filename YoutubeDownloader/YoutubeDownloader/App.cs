@@ -77,9 +77,29 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
         }
     }
 
-    private Task<IEnumerable<DownloadResult>> DownloadFromYouTubeExportedFile(
+    private async Task<IEnumerable<DownloadResult>> DownloadFromYouTubeExportedFile(
         Func<VideoId, DownloadContext> getDownloadContext,
-        CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        CancellationToken cancellationToken = default)
+    {
+        var exportedFilePath = AnsiConsoleExtensions.PromptExportedFilePath();
+
+        var lines = await File.ReadAllLinesAsync(exportedFilePath, cancellationToken)
+                              .ConfigureAwait(false);
+
+        var downloadContext = lines.Skip(1)
+                                   .Where(l => !string.IsNullOrWhiteSpace(l))
+                                   .Select(l => getDownloadContext(GetVideoId(l)))
+                                   .ToList()
+                                   .AsReadOnly();
+
+        return await AnsiConsoleExtensions.ShowProgressAsync(ctx => DownloadAsync(downloadContext, ctx))
+                                          .ConfigureAwait(false);
+
+        static VideoId GetVideoId(string line) =>
+            line.Split(',')
+                .First()
+                .Trim();
+    }
 
     private async Task<IEnumerable<DownloadResult>> DownloadFromPlaylistLink(
         Func<VideoId, DownloadContext> getDownloadContext,
@@ -93,7 +113,7 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
                                       .ToList()
                                       .AsReadOnly();
 
-        return await AnsiConsoleExtensions.ShowProgressAsync(async ctx => await DownloadAsync(downloadContext, ctx).ConfigureAwait(false))
+        return await AnsiConsoleExtensions.ShowProgressAsync(ctx => DownloadAsync(downloadContext, ctx))
                                           .ConfigureAwait(false);
     }
 
@@ -112,6 +132,18 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
 
 public static class AnsiConsoleExtensions
 {
+    public static string PromptExportedFilePath() =>
+        AnsiConsole.Prompt(
+            new TextPrompt<string>("Enter [green]exported file[/] path:")
+                .PromptStyle("green")
+                .ValidationErrorMessage("[red]Invalid exported file path[/]")
+                .Validate(exportedFilePath => exportedFilePath switch
+                {
+                    var v when string.IsNullOrWhiteSpace(v) => ValidationResult.Error("[red]exported file path cannot be empty or whitespace[/]"),
+                    var v when !File.Exists(v) => ValidationResult.Error("[red]exported file path should exist on this device[/]"),
+                    _ => ValidationResult.Success()
+                }));
+
     public static PlaylistId PromptPlaylistId() =>
         AnsiConsole.Prompt(
             new TextPrompt<string>("Enter [green]playlist id[/] or [green]url[/]:")
@@ -182,7 +214,7 @@ public static class AnsiConsoleExtensions
     public static async Task<T> ShowProgressAsync<T>(Func<ProgressContext, Task<T>> action) =>
         await AnsiConsole.Progress()
                          .AutoRefresh(true)
-                         .AutoClear(false)
+                         .AutoClear(true)
                          .HideCompleted(true)
                          .Columns(
                          [
