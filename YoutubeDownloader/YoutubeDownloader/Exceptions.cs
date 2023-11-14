@@ -1,8 +1,8 @@
 ﻿namespace YoutubeDownloader;
 
-public sealed class CsvDataException : Exception
+public sealed class CsvDataCorruptedException : Exception
 {
-    public CsvDataException() { }
-    public CsvDataException(string message) : base(message) { }
-    public CsvDataException(string message, Exception innerException) : base(message, innerException) { }
+    public CsvDataCorruptedException() { }
+    public CsvDataCorruptedException(string message) : base(message) { }
+    public CsvDataCorruptedException(string message, Exception innerException) : base(message, innerException) { }
 }

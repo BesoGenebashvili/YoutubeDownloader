@@ -1,6 +1,6 @@
 ﻿using System.IO.Compression;
 
-namespace YoutubeDownloader;
+namespace YoutubeDownloader.Extensions;
 
 internal enum OperatingSystem : byte
 {

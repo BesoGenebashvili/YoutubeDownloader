@@ -1,6 +1,6 @@
 ﻿using YoutubeDownloader.Models;
 
-namespace YoutubeDownloader;
+namespace YoutubeDownloader.Services.Abstractions;
 
 public interface IAuditService
 {

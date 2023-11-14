@@ -5,6 +5,9 @@ using YoutubeExplode;
 using FluentValidation;
 using YoutubeDownloader.Settings;
 using YoutubeDownloader.Validation;
+using YoutubeDownloader.Services.Implementations;
+using YoutubeDownloader.Services.Abstractions;
+using YoutubeDownloader.Extensions;
 
 Console.WriteLine("Hello, World!");
 

@@ -1,10 +1,11 @@
 ﻿using Microsoft.Extensions.Options;
 using System.Globalization;
 using YoutubeDownloader.Models;
+using YoutubeDownloader.Services.Abstractions;
 using YoutubeDownloader.Settings;
 using static YoutubeDownloader.Models.DownloadResult;
 
-namespace YoutubeDownloader;
+namespace YoutubeDownloader.Services.Implementations;
 
 public static class CSVAuditExtensions
 {
@@ -24,7 +25,7 @@ public static class CSVAuditExtensions
              ParseFileFormat(fileFormat),
              ParseTimestamp(timestamp),
              double.Parse(fileSizeInMB))
-         : throw new CsvDataException($"Error while parsing {nameof(Success)} type");
+         : throw new CsvDataCorruptedException($"Error while parsing {nameof(Success)} type");
 
     public static (Failure failure, uint retryCount) ParseFailure(string s)
     {
@@ -46,7 +47,7 @@ public static class CSVAuditExtensions
                 return (failure, uint.Parse(retryCount));
 
             default:
-                throw new CsvDataException($"Error while parsing {nameof(Failure)} type");
+                throw new CsvDataCorruptedException($"Error while parsing {nameof(Failure)} type");
         }
     }
 

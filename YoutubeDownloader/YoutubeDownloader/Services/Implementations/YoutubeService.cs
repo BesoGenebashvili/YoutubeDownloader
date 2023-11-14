@@ -10,7 +10,7 @@ using YoutubeExplode.Videos.Streams;
 using YoutubeDownloader.Models;
 using VideoQuality = YoutubeDownloader.Models.VideoQuality;
 
-namespace YoutubeDownloader;
+namespace YoutubeDownloader.Services.Implementations;
 
 public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<DownloaderSettings> options)
 {
