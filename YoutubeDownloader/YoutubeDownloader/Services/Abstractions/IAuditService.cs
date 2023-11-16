@@ -8,7 +8,7 @@ public interface IAuditService
         IReadOnlyCollection<DownloadResult> downloads,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyCollection<DownloadResult.Success>> ListSuccessfulDownloads(
+    Task<IReadOnlyCollection<DownloadResult.Success>> ListSuccessfulDownloadsAsync(
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyCollection<DownloadResult.Failure>> ListFailedDownloadsAsync(

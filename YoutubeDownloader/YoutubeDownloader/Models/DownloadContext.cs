@@ -46,8 +46,10 @@ public enum VideoQuality : byte
     FullHD
 }
 
-public abstract record DownloadContext(VideoId VideoId)
+public abstract record VideoConfiguration
 {
-    public record MP3(VideoId VideoId, AudioQuality AudioQuality = AudioQuality.HighBitrate) : DownloadContext(VideoId);
-    public record MP4(VideoId VideoId, VideoQuality VideoQuality = VideoQuality.HD) : DownloadContext(VideoId);
+    public sealed record MP3(AudioQuality AudioQuality = AudioQuality.HighBitrate) : VideoConfiguration;
+    public sealed record MP4(VideoQuality VideoQuality = VideoQuality.HD) : VideoConfiguration;
 }
+
+public sealed record DownloadContext(VideoId VideoId, VideoConfiguration Configuration);

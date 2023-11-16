@@ -8,18 +8,31 @@ public static class CSVAuditExtensions
 {
     private const string TimestampFormat = "yyyy-MM-dd hh:mm:ss";
 
-    private static FileFormat ParseFileFormat(string s) =>
-        Enum.Parse<FileFormat>(s, true);
+    private static VideoConfiguration ParseVideoConfiguration(string fileFormat, string videoQuality) =>
+        Enum.Parse<FileFormat>(fileFormat, true) switch
+        {
+            FileFormat.MP3 => new VideoConfiguration.MP3(Enum.Parse<AudioQuality>(videoQuality, true)),
+            FileFormat.MP4 => new VideoConfiguration.MP4(Enum.Parse<VideoQuality>(videoQuality, true)),
+            _ => throw new NotImplementedException(nameof(fileFormat))
+        };
 
     private static DateTime ParseTimestamp(string s) =>
         DateTime.ParseExact(s, TimestampFormat, CultureInfo.InvariantCulture);
 
+    private static (string fileFormat, string quality) ToCSVColumns(this VideoConfiguration self) =>
+        self switch
+        {
+            VideoConfiguration.MP3(var q) => (FileFormat.MP3.ToString().ToLower(), q.ToString()),
+            VideoConfiguration.MP4(var q) => (FileFormat.MP4.ToString().ToLower(), q.ToString()),
+            _ => throw new NotImplementedException(nameof(self))
+        };
+
     public static Success ParseSuccess(string s) =>
-        s.Split(',') is [{ } videoId, { } fileName, { } fileFormat, { } timestamp, { } fileSizeInMB]
+        s.Split(',') is [{ } videoId, { } fileName, { } fileFormat, { } videoQuality, { } timestamp, { } fileSizeInMB]
          ? new(
              videoId,
              fileName,
-             ParseFileFormat(fileFormat),
+             ParseVideoConfiguration(fileFormat, videoQuality),
              ParseTimestamp(timestamp),
              double.Parse(fileSizeInMB))
          : throw new CsvDataCorruptedException($"Error while parsing {nameof(Success)} type");
@@ -31,13 +44,14 @@ public static class CSVAuditExtensions
             case [
             { } videoId,
             { } fileFormat,
+            { } videoQuality,
             { } timestamp,
             { } retryCount,
             { } errorMessage]:
 
                 var failure = new Failure(
                     videoId,
-                    ParseFileFormat(fileFormat),
+                    ParseVideoConfiguration(fileFormat, videoQuality),
                     ParseTimestamp(timestamp),
                     errorMessage);
 
@@ -50,12 +64,14 @@ public static class CSVAuditExtensions
 
     public static string ToCSVColumn(this Success self)
     {
+        var (fileFormat, quality) = self.Configuration
+                                        .ToCSVColumns();
+
         string[] columns =
             [
                 self.VideoId,
-                self.FileFormat
-                    .ToString()
-                    .ToLower(),
+                fileFormat,
+                quality,
                 self.Timestamp
                     .ToString(TimestampFormat),
                 self.FileSizeInMB
@@ -67,12 +83,14 @@ public static class CSVAuditExtensions
 
     public static string ToCSVColumn(this Failure self, uint retryCount = 0)
     {
+        var (fileFormat, quality) = self.Configuration
+                                        .ToCSVColumns();
+
         string[] columns =
             [
                 self.VideoId,
-                self.FileFormat
-                    .ToString()
-                    .ToLower(),
+                fileFormat,
+                quality,
                 self.Timestamp
                     .ToString(TimestampFormat),
                 retryCount.ToString(CultureInfo.InvariantCulture),

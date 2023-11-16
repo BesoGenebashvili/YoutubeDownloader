@@ -101,8 +101,8 @@ public static class AnsiConsoleExtensions
                     ]));
 
         return Enum.TryParse<AudioQuality>(downloadFormatAndQuality, out var audioQuality)
-                   ? (VideoId videoId) => new DownloadContext.MP3(videoId, audioQuality)
-                   : (VideoId videoId) => new DownloadContext.MP4(videoId, Enum.Parse<VideoQuality>(downloadFormatAndQuality));
+                   ? (VideoId videoId) => new DownloadContext(videoId, new VideoConfiguration.MP3(audioQuality))
+                   : (VideoId videoId) => new DownloadContext(videoId, new VideoConfiguration.MP4(Enum.Parse<VideoQuality>(downloadFormatAndQuality)));
     }
 
     public static async Task<T> ShowProgressAsync<T>(Func<ProgressContext, Task<T>> action) =>

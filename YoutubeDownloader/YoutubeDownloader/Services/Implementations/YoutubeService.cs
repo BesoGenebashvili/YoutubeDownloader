@@ -9,6 +9,7 @@ using YoutubeExplode.Playlists;
 using YoutubeExplode.Videos.Streams;
 using YoutubeDownloader.Models;
 using VideoQuality = YoutubeDownloader.Models.VideoQuality;
+using YoutubeDownloader.Extensions;
 
 namespace YoutubeDownloader.Services.Implementations;
 
@@ -59,9 +60,9 @@ public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<Downloa
 
         var fileName = ResolveFilename(video.Title, downloadContext.VideoId);
 
-        var downloadTask = downloadContext switch
+        var downloadTask = downloadContext.Configuration switch
         {
-            DownloadContext.MP3(_, AudioQuality quality) =>
+            VideoConfiguration.MP3(AudioQuality quality) =>
                 DownloadMP3Async(
                     Path.Combine(_settings.SaveFolderPath, $"{fileName}.mp3"),
                     quality,
@@ -69,7 +70,7 @@ public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<Downloa
                     progress,
                     cancellationToken),
 
-            DownloadContext.MP4(_, VideoQuality quality) =>
+            VideoConfiguration.MP4(VideoQuality quality) =>
                 DownloadMP4Async(
                     Path.Combine(_settings.SaveFolderPath, $"{fileName}.mp4"),
                     quality,

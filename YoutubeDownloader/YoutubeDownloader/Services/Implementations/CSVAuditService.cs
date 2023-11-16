@@ -39,9 +39,18 @@ public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditServi
         // Log
     }
 
-    public Task<IReadOnlyCollection<Success>> ListSuccessfulDownloads(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyCollection<Success>> ListSuccessfulDownloadsAsync(CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        ArgumentException.ThrowIfNullOrWhiteSpace(_settings.SuccessfulDownloadsFilePath, nameof(_settings.SuccessfulDownloadsFilePath));
+
+        var lines = await File.ReadAllLinesAsync(_settings.SuccessfulDownloadsFilePath, cancellationToken)
+                              .ConfigureAwait(false);
+
+        return lines.Skip(1)
+                    .Where(l => !string.IsNullOrWhiteSpace(l))
+                    .Select(CSVAuditExtensions.ParseSuccess)
+                    .ToList()
+                    .AsReadOnly();
     }
 
     public async Task<IReadOnlyCollection<Failure>> ListFailedDownloadsAsync(CancellationToken cancellationToken = default)
@@ -90,11 +99,11 @@ public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditServi
 
         var availableFailedRecords = GetAvailableFailedRecords();
 
-        // TODO: Refactor
-        var records = failures.GroupBy(f => (f.VideoId, f.FileFormat))
+        // TODO: Review & Refactor
+        var records = failures.GroupBy(f => (f.VideoId, f.Configuration))
                               .Select(g => (failure: g.MaxBy(f => f.Timestamp)!, retryCount: (uint)g.Count()))
                               .Concat(availableFailedRecords)
-                              .GroupBy(f => (f.failure.VideoId, f.failure.FileFormat))
+                              .GroupBy(f => (f.failure.VideoId, f.failure.Configuration))
                               .Select(g => (g.MaxBy(f => f.failure.Timestamp).failure, retryCount: (uint)g.Count()));
 
         var content = records.Select(g => g.failure.ToCSVColumn(g.retryCount))

@@ -2,48 +2,21 @@
 
 namespace YoutubeDownloader.Models;
 
-// TODO: add quality
-public abstract record DownloadResult(VideoId VideoId, FileFormat FileFormat, DateTime Timestamp)
+public abstract record DownloadResult(
+    VideoId VideoId,
+    VideoConfiguration Configuration,
+    DateTime Timestamp)
 {
-    public record Success(
+    public sealed record Success(
         VideoId VideoId,
         string FileName,
-        FileFormat FileFormat,
+        VideoConfiguration Configuration,
         DateTime Timestamp,
-        double FileSizeInMB) : DownloadResult(VideoId, FileFormat, Timestamp);
+        double FileSizeInMB) : DownloadResult(VideoId, Configuration, Timestamp);
 
-    public record Failure(
+    public sealed record Failure(
         VideoId VideoId,
-        FileFormat FileFormat,
+        VideoConfiguration Configuration,
         DateTime Timestamp,
-        string ErrorMessage) : DownloadResult(VideoId, FileFormat, Timestamp);
-}
-
-//TODO: this should not be here
-public static class DownloadResultExtensions
-{
-    public static FileFormat GetFileFormat(this DownloadContext downloadContext) => downloadContext switch
-    {
-        DownloadContext.MP3 => FileFormat.MP3,
-        DownloadContext.MP4 => FileFormat.MP4,
-        _ => throw new NotImplementedException(nameof(downloadContext))
-    };
-
-    public static DownloadResult.Success Success(
-        this DownloadContext downloadContext,
-        string fileName,
-        double fileSizeInMB) =>
-        new(downloadContext.VideoId,
-            fileName,
-            downloadContext.GetFileFormat(),
-            DateTime.Now,
-            fileSizeInMB);
-
-    public static DownloadResult.Failure Failure(
-        this DownloadContext downloadContext,
-        string errorMessage) =>
-        new(downloadContext.VideoId,
-            downloadContext.GetFileFormat(),
-            DateTime.Now,
-            errorMessage);
+        string ErrorMessage) : DownloadResult(VideoId, Configuration, Timestamp);
 }
