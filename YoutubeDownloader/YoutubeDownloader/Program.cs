@@ -49,7 +49,7 @@ static IHostBuilder CreateHostBuilder(string[] args) =>
                     .ValidateOnStart();
 
             services.AddSingleton<YoutubeClient>();
-            services.AddTransient<YoutubeService>();
+            services.AddTransient<YoutubeDownloaderService>();
             services.AddTransient<IAuditService, CSVAuditService>();
 
             services.AddSingleton<App>();

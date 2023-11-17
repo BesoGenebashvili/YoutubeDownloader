@@ -1,192 +1,153 @@
-﻿using YoutubeExplode;
-using YoutubeExplode.Converter;
-using YoutubeExplode.Videos;
-using System.Text.RegularExpressions;
-using Microsoft.Extensions.Options;
-using FluentValidation;
-using YoutubeDownloader.Settings;
-using YoutubeExplode.Playlists;
-using YoutubeExplode.Videos.Streams;
-using YoutubeDownloader.Models;
-using VideoQuality = YoutubeDownloader.Models.VideoQuality;
+﻿using Spectre.Console;
+using System.Collections.ObjectModel;
 using YoutubeDownloader.Extensions;
+using YoutubeDownloader.Models;
+using YoutubeExplode.Videos;
+using AnsiConsoleExtensions = YoutubeDownloader.Extensions.AnsiConsoleExtensions;
 
 namespace YoutubeDownloader.Services;
 
-// TODO: YoutubeService -> YoutubeDownloaderService
-public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<DownloaderSettings> options)
+public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderService)
 {
-    private readonly YoutubeClient _youtubeClient = youtubeClient;
-    private readonly DownloaderSettings _settings = options.Value;
+    private readonly YoutubeDownloaderService _youtubeDownloaderService = youtubeDownloaderService;
 
-    private static string ResolveFilename(string title, VideoId videoId)
-    {
-        var regexPattern = $"[{Regex.Escape(new(Path.GetInvalidFileNameChars()))}]";
-
-        var newFilename = Regex.Replace(title, regexPattern, string.Empty);
-
-        return string.IsNullOrWhiteSpace(newFilename)
-                     ? videoId
-                     : newFilename;
-    }
-
-    public async Task<IEnumerable<VideoId>> GetVideoIdsFromPlaylistAsync(
-        PlaylistId playlistId,
+    private async Task<IReadOnlyCollection<DownloadResult>> DownloadAsync(
+        IReadOnlyCollection<DownloadContext> downloadContexts,
+        ProgressContext progressContext,
         CancellationToken cancellationToken = default)
     {
-        var playlistVideos = await _youtubeClient.Playlists
-                                                 .GetVideosAsync(
-                                                      playlistId,
-                                                      cancellationToken)
-                                                 .ToListAsync(cancellationToken);
+        try
+        {
+            using var semaphore = new SemaphoreSlim(30);
 
-        return playlistVideos.Select(x => x.Id);
+            var downloadTasks = downloadContexts.Select<DownloadContext, Task<DownloadResult>>(async downloadContext =>
+            {
+                await semaphore.WaitAsync(cancellationToken);
+
+                var downloadTask = progressContext.AddTask($"[green]{downloadContext.VideoId}[/]");
+
+                var progress = new Progress<double>(value => downloadTask.Increment(value));
+
+                try
+                {
+                    return await _youtubeDownloaderService.DownloadAsync(
+                                                              downloadContext,
+                                                              progress,
+                                                              cancellationToken)
+                                                          .ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    downloadTask.StopTask();
+
+                    return downloadContext.Failure(ex.Message.Replace(',', '.'));
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
+
+            return await Task.WhenAll(downloadTasks)
+                             .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            AnsiConsoleExtensions.MarkupLine($"An error occurred while downloading data: ", ex.Message, AnsiColor.Red);
+            throw;
+        }
     }
 
-    public async Task<DownloadResult.Success> DownloadAsync(
-        DownloadContext downloadContext,
-        IProgress<double>? progress = default,
+    public async Task<IReadOnlyCollection<DownloadResult>> DownloadFromVideoLinkAsync(
+        Func<VideoId, DownloadContext> getDownloadContext,
         CancellationToken cancellationToken = default)
     {
-        var video = await _youtubeClient.Videos
-                                        .GetAsync(downloadContext.VideoId, cancellationToken)
-                                        .ConfigureAwait(false);
+        var videoId = AnsiConsoleExtensions.PromptVideoId();
 
-        var streamManifest = await _youtubeClient.Videos
-                                                 .Streams
-                                                 .GetManifestAsync(
-                                                     downloadContext.VideoId,
-                                                     cancellationToken)
-                                                 .ConfigureAwait(false);
+        var downloadContext = getDownloadContext(videoId);
 
-        var fileName = ResolveFilename(video.Title, downloadContext.VideoId);
-
-        var downloadTask = downloadContext.Configuration switch
-        {
-            VideoConfiguration.MP3(AudioQuality quality) =>
-                DownloadMP3Async(
-                    Path.Combine(_settings.SaveFolderPath, $"{fileName}.mp3"),
-                    quality,
-                    streamManifest,
-                    progress,
-                    cancellationToken),
-
-            VideoConfiguration.MP4(VideoQuality quality) =>
-                DownloadMP4Async(
-                    Path.Combine(_settings.SaveFolderPath, $"{fileName}.mp4"),
-                    quality,
-                    streamManifest,
-                    progress,
-                    cancellationToken),
-            _ => throw new NotImplementedException(nameof(downloadContext))
-        };
-
-        var fileSizeInMb = await downloadTask.ConfigureAwait(false);
-
-        return downloadContext.Success(fileName, fileSizeInMb);
+        return await AnsiConsoleExtensions.ShowProgressAsync(async ctx => await DownloadAsync([downloadContext], ctx).ConfigureAwait(false))
+                                          .ConfigureAwait(false);
     }
 
-    private async Task<double> DownloadMP3Async(
-        string filePath,
-        AudioQuality quality,
-        StreamManifest streamManifest,
-        IProgress<double>? progress = default,
+    public async Task<IReadOnlyCollection<DownloadResult>> DownloadFromPlaylistLinkAsync(
+        Func<VideoId, DownloadContext> getDownloadContext,
         CancellationToken cancellationToken = default)
     {
-        var audioOnlyStreamInfos = streamManifest.GetAudioOnlyStreams();
+        var playlistId = AnsiConsoleExtensions.PromptPlaylistId();
 
-        var streamInfo = quality switch
-        {
-            AudioQuality.LowBitrate => audioOnlyStreamInfos.MinBy(a => a.Bitrate) ?? throw new InvalidOperationException("Input stream collection is empty."),
-            AudioQuality.HighBitrate => audioOnlyStreamInfos.GetWithHighestBitrate(),
-            _ => throw new NotImplementedException(nameof(quality))
-        };
+        var videoIds = await _youtubeDownloaderService.GetVideoIdsFromPlaylistAsync(playlistId, cancellationToken);
 
-        await _youtubeClient.Videos
-                            .Streams
-                            .DownloadAsync(
-                                 streamInfo,
-                                 filePath,
-                                 progress,
-                                 cancellationToken: cancellationToken)
-                            .ConfigureAwait(false);
+        var downloadContext = videoIds.Select(getDownloadContext)
+                                      .ToList()
+                                      .AsReadOnly();
 
-        return streamInfo.Size.MegaBytes;
+        return await AnsiConsoleExtensions.ShowProgressAsync(ctx => DownloadAsync(downloadContext, ctx))
+                                          .ConfigureAwait(false);
     }
 
-    private async Task<double> DownloadMP4Async(
-        string filePath,
-        VideoQuality quality,
-        StreamManifest streamManifest,
-        IProgress<double>? progress = default,
+    public async Task<IReadOnlyCollection<DownloadResult>> DownloadFromYouTubeExportedFileAsync(
+        Func<VideoId, DownloadContext> getDownloadContext,
         CancellationToken cancellationToken = default)
     {
-        var downloadTask = quality switch
+        var exportedFilePath = AnsiConsoleExtensions.PromptExportedFilePath();
+
+        var lines = await File.ReadAllLinesAsync(exportedFilePath, cancellationToken)
+                              .ConfigureAwait(false);
+
+        var downloadContexts = lines.Skip(1)
+                                   .Where(l => !string.IsNullOrWhiteSpace(l))
+                                   .Select(l => getDownloadContext(GetVideoId(l)))
+                                   .ToList()
+                                   .AsReadOnly();
+
+        return await AnsiConsoleExtensions.ShowProgressAsync(ctx => DownloadAsync(downloadContexts, ctx))
+                                          .ConfigureAwait(false);
+
+        static VideoId GetVideoId(string line) =>
+            line.Split(',')
+                .First()
+                .Trim();
+    }
+
+    public async Task<IReadOnlyCollection<DownloadResult>> DownloadFromFromFailedDownloadsAsync(
+        Func<VideoId, DownloadContext> getDownloadContext,
+        Func<CancellationToken, Task<IReadOnlyCollection<DownloadResult.Failure>>> getFailedDownloads,
+        CancellationToken cancellationToken)
+    {
+        var emptyDownloadResults = ReadOnlyCollection<DownloadResult>.Empty;
+        IReadOnlyCollection<DownloadResult.Failure> failedDownloads = ReadOnlyCollection<DownloadResult.Failure>.Empty;
+
+        try
         {
-            VideoQuality.SD => DownloadMuxedStreamAsync("480p"),
-            VideoQuality.HD => DownloadMuxedStreamAsync("720p"),
-            VideoQuality.FullHD => DownloadSeparateStreamsAsync(),
-            _ => throw new NotImplementedException(nameof(quality))
-        };
-
-        return await downloadTask.ConfigureAwait(false);
-
-        async Task<double> DownloadMuxedStreamAsync(string qualityLabel)
+            failedDownloads = await getFailedDownloads(cancellationToken).ConfigureAwait(false);
+        }
+        catch (FileNotFoundException)
         {
-            var muxedStreamInfos = streamManifest.GetMuxedStreams()
-                                                 .Where(s => s.Container == Container.Mp4)
-                                                 .OrderByDescending(s => s.VideoQuality);
-
-            // TODO: Refactor
-            var streamInfo = muxedStreamInfos.FirstOrDefault(s => s.VideoQuality.Label == qualityLabel)
-                                             ?? muxedStreamInfos.First(
-                                                    s => s.VideoQuality.Label != "720p"
-                                                      && s.VideoQuality.Label != qualityLabel);
-
-            await _youtubeClient.Videos
-                                .Streams
-                                .DownloadAsync(
-                                     streamInfo,
-                                     filePath,
-                                     progress,
-                                     cancellationToken)
-                                .ConfigureAwait(false);
-
-            return streamInfo.Size.MegaBytes;
+            AnsiConsoleExtensions.MarkupLine("failed downloads ", "folder not found.", AnsiColor.Red);
+            return emptyDownloadResults;
         }
 
-        async Task<double> DownloadSeparateStreamsAsync()
+        if (failedDownloads.Count == 0)
         {
-            var audioStreamInfo = streamManifest.GetAudioStreams()
-                                                .Where(s => s.Container == Container.Mp4)
-                                                .GetWithHighestBitrate();
-
-            var videoStreamInfo = streamManifest.GetVideoStreams()
-                                                .Where(s => s.Container == Container.Mp4)
-                                                .GetWithHighestVideoQuality();
-
-            var streamInfos = new IStreamInfo[]
-            {
-                audioStreamInfo,
-                videoStreamInfo
-            };
-
-            var conversionRequestBuilder = new ConversionRequestBuilder(filePath);
-
-            if (!string.IsNullOrWhiteSpace(_settings.FFmpegPath))
-            {
-                conversionRequestBuilder.SetFFmpegPath(_settings.FFmpegPath);
-            }
-
-            await _youtubeClient.Videos
-                                .DownloadAsync(
-                                     streamInfos,
-                                     conversionRequestBuilder.Build(),
-                                     progress,
-                                     cancellationToken)
-                                .ConfigureAwait(false);
-
-            return audioStreamInfo.Size.MegaBytes + videoStreamInfo.Size.MegaBytes;
+            AnsiConsoleExtensions.MarkupLine("failed downloads ", "not found.", AnsiColor.Red);
+            return emptyDownloadResults;
         }
+
+        var failedDownloadResendSetting = AnsiConsoleExtensions.SelectFailedDownloadResendSettings(
+            [
+                FailedDownloadResendSetting.KeepOriginal,
+                FailedDownloadResendSetting.OverrideWithNew
+            ]);
+
+        var downloadContexts = failedDownloads.Select(f => f.ToDownloadContext());
+
+        downloadContexts = failedDownloadResendSetting is FailedDownloadResendSetting.OverrideWithNew
+                               ? downloadContexts.Select(d => getDownloadContext(d.VideoId))
+                               : downloadContexts;
+
+        // TODO: Extension ToReadOnlyList -> ToList().AsReadOnly()
+        return await AnsiConsoleExtensions.ShowProgressAsync(ctx => DownloadAsync(downloadContexts.ToList().AsReadOnly(), ctx))
+                                          .ConfigureAwait(false);
     }
 }
