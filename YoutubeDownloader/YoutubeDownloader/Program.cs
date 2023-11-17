@@ -5,9 +5,8 @@ using YoutubeExplode;
 using FluentValidation;
 using YoutubeDownloader.Settings;
 using YoutubeDownloader.Validation;
-using YoutubeDownloader.Services.Implementations;
-using YoutubeDownloader.Services.Abstractions;
 using YoutubeDownloader.Extensions;
+using YoutubeDownloader.Services;
 
 Console.WriteLine("Hello, World!");
 
@@ -30,7 +29,7 @@ try
 }
 catch (Exception ex)
 {
-    Console.WriteLine(ex.Message);
+    Console.WriteLine(ex);
 }
 
 static IHostBuilder CreateHostBuilder(string[] args) =>

@@ -1,9 +1,9 @@
 ﻿using Spectre.Console;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using YoutubeDownloader.Extensions;
 using YoutubeDownloader.Models;
-using YoutubeDownloader.Services.Abstractions;
-using YoutubeDownloader.Services.Implementations;
+using YoutubeDownloader.Services;
 using YoutubeExplode.Videos;
 using AnsiConsoleExtensions = YoutubeDownloader.Extensions.AnsiConsoleExtensions;
 
@@ -39,20 +39,23 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
 
         var downloadResults = await downloadTask.ConfigureAwait(false);
 
-        await _auditService.AuditDownloadsAsync(downloadResults.ToList()
-                                                               .AsReadOnly())
+        await _auditService.AuditDownloadsAsync(downloadResults)
                            .ConfigureAwait(false);
     }
 
-    private async Task<IEnumerable<DownloadResult>> DownloadAsync(
+    private async Task<IReadOnlyCollection<DownloadResult>> DownloadAsync(
         IReadOnlyCollection<DownloadContext> downloadContexts,
         ProgressContext progressContext,
         CancellationToken cancellationToken = default)
     {
         try
         {
+            using var semaphore = new SemaphoreSlim(30);
+
             var downloadTasks = downloadContexts.Select<DownloadContext, Task<DownloadResult>>(async downloadContext =>
             {
+                await semaphore.WaitAsync(cancellationToken);
+
                 var downloadTask = progressContext.AddTask($"[green]{downloadContext.VideoId}[/]");
 
                 var progress = new Progress<double>(value => downloadTask.Increment(value));
@@ -71,6 +74,10 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
 
                     return downloadContext.Failure(ex.Message.Replace(',', '.'));
                 }
+                finally
+                {
+                    semaphore.Release();
+                }
             });
 
             return await Task.WhenAll(downloadTasks)
@@ -78,12 +85,12 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
         }
         catch (Exception ex)
         {
-            await Console.Out.WriteLineAsync($"An error occurred while downloading data: {ex.Message}");
+            AnsiConsoleExtensions.MarkupLine($"An error occurred while downloading data: ", ex.Message, AnsiColor.Red);
             throw;
         }
     }
 
-    private async Task<IEnumerable<DownloadResult>> DownloadFromVideoLinkAsync(
+    private async Task<IReadOnlyCollection<DownloadResult>> DownloadFromVideoLinkAsync(
         Func<VideoId, DownloadContext> getDownloadContext,
         CancellationToken cancellationToken = default)
     {
@@ -95,7 +102,7 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
                                           .ConfigureAwait(false);
     }
 
-    private async Task<IEnumerable<DownloadResult>> DownloadFromPlaylistLinkAsync(
+    private async Task<IReadOnlyCollection<DownloadResult>> DownloadFromPlaylistLinkAsync(
         Func<VideoId, DownloadContext> getDownloadContext,
         CancellationToken cancellationToken = default)
     {
@@ -111,7 +118,7 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
                                           .ConfigureAwait(false);
     }
 
-    private async Task<IEnumerable<DownloadResult>> DownloadFromYouTubeExportedFileAsync(
+    private async Task<IReadOnlyCollection<DownloadResult>> DownloadFromYouTubeExportedFileAsync(
         Func<VideoId, DownloadContext> getDownloadContext,
         CancellationToken cancellationToken = default)
     {
@@ -135,28 +142,27 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
                 .Trim();
     }
 
-    private async Task<IEnumerable<DownloadResult>> DownloadFromFromFailedDownloads(
+    private async Task<IReadOnlyCollection<DownloadResult>> DownloadFromFromFailedDownloads(
         Func<VideoId, DownloadContext> getDownloadContext,
         CancellationToken cancellationToken)
     {
-        var emptyDownloadResults = Enumerable.Empty<DownloadResult>();
+        var emptyDownloadResults = ReadOnlyCollection<DownloadResult>.Empty;
         IReadOnlyCollection<DownloadResult.Failure> failedDownloads = ReadOnlyCollection<DownloadResult.Failure>.Empty;
 
         try
         {
             failedDownloads = await _auditService.ListFailedDownloadsAsync(cancellationToken)
                                                  .ConfigureAwait(false);
-
         }
         catch (FileNotFoundException)
         {
-            AnsiConsole.Write(new Markup("failed downloads [red]folder not found.[/]"));
+            AnsiConsoleExtensions.MarkupLine("failed downloads ", "folder not found.", AnsiColor.Red);
             return emptyDownloadResults;
         }
 
         if (failedDownloads.Count == 0)
         {
-            AnsiConsole.Write(new Markup("failed downloads [yellow]not found.[/]"));
+            AnsiConsoleExtensions.MarkupLine("failed downloads ", "not found.", AnsiColor.Red);
             return emptyDownloadResults;
         }
 

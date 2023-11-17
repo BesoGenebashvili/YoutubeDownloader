@@ -5,8 +5,31 @@ using YoutubeExplode.Videos;
 
 namespace YoutubeDownloader.Extensions;
 
+public enum AnsiColor
+{
+    Green,
+    Gray,
+    Yellow,
+    Red
+}
+
 public static class AnsiConsoleExtensions
 {
+    public static void MarkupLine(
+        string text,
+        string? textWithMarkup = null,
+        AnsiColor markupColor = AnsiColor.Gray)
+    {
+        if (textWithMarkup is { Length: > 0 })
+        {
+            AnsiConsole.MarkupLine($"{text}[{markupColor}]{textWithMarkup}[/]");
+        }
+        else
+        {
+            AnsiConsole.MarkupLine(text);
+        }
+    }
+
     public static FailedDownloadResendSetting SelectFailedDownloadResendSettings(FailedDownloadResendSetting[] settings)
     {
         var settingsLookup = settings.ToLookup(setting => setting switch

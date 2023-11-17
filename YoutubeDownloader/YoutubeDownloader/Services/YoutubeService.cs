@@ -11,7 +11,7 @@ using YoutubeDownloader.Models;
 using VideoQuality = YoutubeDownloader.Models.VideoQuality;
 using YoutubeDownloader.Extensions;
 
-namespace YoutubeDownloader.Services.Implementations;
+namespace YoutubeDownloader.Services;
 
 // TODO: YoutubeService -> YoutubeDownloaderService
 public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<DownloaderSettings> options)

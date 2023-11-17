@@ -22,11 +22,11 @@ public static class FFmpegExtensions
                                                 ? OperatingSystem.Linux
                                                 : throw new ApplicationException("OS not supported");
 
-                await Console.Out.WriteLineAsync($"Downloading FFmpeg for {operatingSystem}");
+                AnsiConsoleExtensions.MarkupLine("Downloading FFmpeg for ", operatingSystem.ToString(), AnsiColor.Green);
 
                 await DownloadFFmpegAsync(operatingSystem, cancellationToken).ConfigureAwait(false);
 
-                await Console.Out.WriteLineAsync("FFmpeg downloaded successfully");
+                AnsiConsoleExtensions.MarkupLine("FFmpeg downloaded ", "successfully", AnsiColor.Green);
             }
         }
         catch (TaskCanceledException)
@@ -35,7 +35,7 @@ public static class FFmpegExtensions
         }
         catch (Exception ex)
         {
-            await Console.Out.WriteLineAsync($"An error occurred while configuring the FFmpeg settings: {ex.Message}");
+            AnsiConsoleExtensions.MarkupLine("An error occurred while configuring the FFmpeg settings: ", ex.Message, AnsiColor.Red);
             throw;
         }
     }

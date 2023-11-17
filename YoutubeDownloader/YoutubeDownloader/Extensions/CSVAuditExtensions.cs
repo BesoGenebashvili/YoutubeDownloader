@@ -13,7 +13,7 @@ public static class CSVAuditExtensions
             "Video Id",
             "File Name",
             "File Format",
-            "Video Quality",
+            "Quality",
             "Timestamp",
             "File Size In MB"
         ];
@@ -22,7 +22,7 @@ public static class CSVAuditExtensions
         [
             "Video Id",
             "File Format",
-            "Video Quality",
+            "Quality",
             "Retry Count",
             "Timestamp",
             "Error Message"

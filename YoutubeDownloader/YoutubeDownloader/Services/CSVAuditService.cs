@@ -1,11 +1,10 @@
 ﻿using Microsoft.Extensions.Options;
 using YoutubeDownloader.Extensions;
 using YoutubeDownloader.Models;
-using YoutubeDownloader.Services.Abstractions;
 using YoutubeDownloader.Settings;
 using static YoutubeDownloader.Models.DownloadResult;
 
-namespace YoutubeDownloader.Services.Implementations;
+namespace YoutubeDownloader.Services;
 
 public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditService
 {
