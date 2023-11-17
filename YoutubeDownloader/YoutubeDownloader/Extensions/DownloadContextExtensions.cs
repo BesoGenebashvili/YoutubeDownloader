@@ -5,20 +5,20 @@ namespace YoutubeDownloader.Extensions;
 public static class DownloadContextExtensions
 {
     public static DownloadResult.Success Success(
-        this DownloadContext downloadContext,
+        this DownloadContext self,
         string fileName,
         double fileSizeInMB) =>
-        new(downloadContext.VideoId,
+        new(self.VideoId,
             fileName,
-            downloadContext.Configuration,
+            self.Configuration,
             DateTime.Now,
             fileSizeInMB);
 
     public static DownloadResult.Failure Failure(
-        this DownloadContext downloadContext,
+        this DownloadContext self,
         string errorMessage) =>
-        new(downloadContext.VideoId,
-            downloadContext.Configuration,
+        new(self.VideoId,
+            self.Configuration,
             DateTime.Now,
             errorMessage);
 }

@@ -1,5 +1,5 @@
 ﻿using Spectre.Console;
-using System.Linq;
+using System.Collections.ObjectModel;
 using YoutubeDownloader.Extensions;
 using YoutubeDownloader.Models;
 using YoutubeDownloader.Services.Abstractions;
@@ -120,13 +120,13 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
         var lines = await File.ReadAllLinesAsync(exportedFilePath, cancellationToken)
                               .ConfigureAwait(false);
 
-        var downloadContext = lines.Skip(1)
+        var downloadContexts = lines.Skip(1)
                                    .Where(l => !string.IsNullOrWhiteSpace(l))
                                    .Select(l => getDownloadContext(GetVideoId(l)))
                                    .ToList()
                                    .AsReadOnly();
 
-        return await AnsiConsoleExtensions.ShowProgressAsync(ctx => DownloadAsync(downloadContext, ctx))
+        return await AnsiConsoleExtensions.ShowProgressAsync(ctx => DownloadAsync(downloadContexts, ctx))
                                           .ConfigureAwait(false);
 
         static VideoId GetVideoId(string line) =>
@@ -139,13 +139,25 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
         Func<VideoId, DownloadContext> getDownloadContext,
         CancellationToken cancellationToken)
     {
-        var failedDownloads = await _auditService.ListFailedDownloadsAsync(cancellationToken)
+        var emptyDownloadResults = Enumerable.Empty<DownloadResult>();
+        IReadOnlyCollection<DownloadResult.Failure> failedDownloads = ReadOnlyCollection<DownloadResult.Failure>.Empty;
+
+        try
+        {
+            failedDownloads = await _auditService.ListFailedDownloadsAsync(cancellationToken)
                                                  .ConfigureAwait(false);
+
+        }
+        catch (FileNotFoundException)
+        {
+            AnsiConsole.Write(new Markup("failed downloads [red]folder not found.[/]"));
+            return emptyDownloadResults;
+        }
 
         if (failedDownloads.Count == 0)
         {
             AnsiConsole.Write(new Markup("failed downloads [yellow]not found.[/]"));
-            return Enumerable.Empty<DownloadResult>();
+            return emptyDownloadResults;
         }
 
         var failedDownloadResendSetting = AnsiConsoleExtensions.SelectFailedDownloadResendSettings(
@@ -154,27 +166,14 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
                 FailedDownloadResendSetting.OverrideWithNew
             ]);
 
-        throw new NotImplementedException();
+        var downloadContexts = failedDownloads.Select(f => f.ToDownloadContext());
 
-        /*
-        var downloadContext = failedDownloadResendSetting switch
-        {
-            FailedDownloadResendSetting.KeepOriginal => failedDownloads.Select(failed => failed.FileFormat switch
-            {
-                FileFormat.MP3 => new DownloadContext.MP3(failed.VideoId, failed.),
-                FileFormat.MP4 => throw new NotImplementedException(),
-                _ => throw new NotImplementedException(nameof(failed.FileFormat)),
-            }),
-            FailedDownloadResendSetting.OverrideWithNew => throw new NotImplementedException(),
-            _ => throw new NotImplementedException(nameof(failedDownloadResendSetting)),
-        }
+        downloadContexts = failedDownloadResendSetting is FailedDownloadResendSetting.OverrideWithNew
+                               ? downloadContexts.Select(d => getDownloadContext(d.VideoId))
+                               : downloadContexts;
 
-        var downloadContext = failedDownloads.Select(f => getDownloadContext(f.VideoId))
-                                             .ToList()
-                                             .AsReadOnly();
-
-        return await AnsiConsoleExtensions.ShowProgressAsync(ctx => DownloadAsync(downloadContext, ctx))
+        // TODO: Extension ToReadOnlyList -> ToList().AsReadOnly()
+        return await AnsiConsoleExtensions.ShowProgressAsync(ctx => DownloadAsync(downloadContexts.ToList().AsReadOnly(), ctx))
                                           .ConfigureAwait(false);
-        */
     }
 }

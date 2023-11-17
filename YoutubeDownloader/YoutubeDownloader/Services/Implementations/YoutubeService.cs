@@ -13,6 +13,7 @@ using YoutubeDownloader.Extensions;
 
 namespace YoutubeDownloader.Services.Implementations;
 
+// TODO: YoutubeService -> YoutubeDownloaderService
 public sealed class YoutubeService(YoutubeClient youtubeClient, IOptions<DownloaderSettings> options)
 {
     private readonly YoutubeClient _youtubeClient = youtubeClient;

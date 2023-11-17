@@ -74,7 +74,7 @@ public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditServi
         ArgumentException.ThrowIfNullOrWhiteSpace(_settings.SuccessfulDownloadsFilePath, nameof(_settings.SuccessfulDownloadsFilePath));
 
         // TODO: add "File Absolute Path"
-        var headers = string.Join(',', ["Video Id", "File Name", "File Format", "Timestamp", "File Size In MB"]);
+        var headers = string.Join(',', CSVAuditExtensions.SuccessHeaders);
 
         var records = successes.Select(CSVAuditExtensions.ToCSVColumn);
 
@@ -95,7 +95,7 @@ public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditServi
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(_settings.FailedDownloadsFilePath, nameof(_settings.FailedDownloadsFilePath));
 
-        var headers = string.Join(',', ["Video Id", "File Format", "Timestamp", "Retry Count", "Error Message"]);
+        var headers = string.Join(',', CSVAuditExtensions.FailureHeaders);
 
         var availableFailedRecords = GetAvailableFailedRecords();
 

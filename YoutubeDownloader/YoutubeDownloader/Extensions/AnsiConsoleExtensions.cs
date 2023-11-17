@@ -68,7 +68,7 @@ public static class AnsiConsoleExtensions
             DownloadOption.FromVideoLink => "From video link",
             DownloadOption.FromPlaylistLink => "From playlist link",
             DownloadOption.FromYouTubeExportedFile => "From YouTube exported file",
-            DownloadOption.FromFailedDownloads => "From failed",
+            DownloadOption.FromFailedDownloads => "From failed downloads",
             _ => throw new NotImplementedException(nameof(option))
         });
 
