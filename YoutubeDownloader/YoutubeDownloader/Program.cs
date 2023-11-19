@@ -50,6 +50,7 @@ static IHostBuilder CreateHostBuilder(string[] args) =>
 
             services.AddSingleton<YoutubeClient>();
             services.AddTransient<YoutubeDownloaderService>();
+            services.AddTransient<YoutubeService>();
             services.AddTransient<IAuditService, CSVAuditService>();
 
             services.AddSingleton<App>();

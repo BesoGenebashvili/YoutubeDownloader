@@ -17,12 +17,10 @@ public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditServi
         ArgumentNullException.ThrowIfNull(downloads, nameof(downloads));
 
         var successes = downloads.OfType<Success>()
-                                 .ToList()
-                                 .AsReadOnly();
+                                 .AsReadOnlyList();
 
         var failures = downloads.OfType<Failure>()
-                                .ToList()
-                                .AsReadOnly();
+                                .AsReadOnlyList();
 
         Task[] auditTasks = (_settings.AuditSuccessful, _settings.AuditFailed) switch
         {
@@ -48,8 +46,7 @@ public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditServi
         return lines.Skip(1)
                     .Where(l => !string.IsNullOrWhiteSpace(l))
                     .Select(CSVAuditExtensions.ParseSuccess)
-                    .ToList()
-                    .AsReadOnly();
+                    .AsReadOnlyList();
     }
 
     public async Task<IReadOnlyCollection<Failure>> ListFailedDownloadsAsync(CancellationToken cancellationToken = default)
@@ -62,8 +59,7 @@ public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditServi
         return lines.Skip(1)
                     .Where(l => !string.IsNullOrWhiteSpace(l))
                     .Select(l => CSVAuditExtensions.ParseFailure(l).failure)
-                    .ToList()
-                    .AsReadOnly();
+                    .AsReadOnlyList();
     }
 
     private async Task AuditSuccessfulDownloadsAsync(

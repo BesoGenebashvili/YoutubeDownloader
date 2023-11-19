@@ -90,6 +90,7 @@ public static class CSVAuditExtensions
         string[] columns =
             [
                 self.VideoId,
+                self.FileName,
                 fileFormat,
                 quality,
                 self.Timestamp

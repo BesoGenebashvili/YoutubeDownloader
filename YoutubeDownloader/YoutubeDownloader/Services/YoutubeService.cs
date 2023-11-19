@@ -79,8 +79,7 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
         var videoIds = await _youtubeDownloaderService.GetVideoIdsFromPlaylistAsync(playlistId, cancellationToken);
 
         var downloadContext = videoIds.Select(getDownloadContext)
-                                      .ToList()
-                                      .AsReadOnly();
+                                      .AsReadOnlyList();
 
         return await AnsiConsoleExtensions.ShowProgressAsync(ctx => DownloadAsync(downloadContext, ctx))
                                           .ConfigureAwait(false);
@@ -98,8 +97,7 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
         var downloadContexts = lines.Skip(1)
                                    .Where(l => !string.IsNullOrWhiteSpace(l))
                                    .Select(l => getDownloadContext(GetVideoId(l)))
-                                   .ToList()
-                                   .AsReadOnly();
+                                   .AsReadOnlyList();
 
         return await AnsiConsoleExtensions.ShowProgressAsync(ctx => DownloadAsync(downloadContexts, ctx))
                                           .ConfigureAwait(false);
@@ -146,8 +144,7 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
                                ? downloadContexts.Select(d => getDownloadContext(d.VideoId))
                                : downloadContexts;
 
-        // TODO: Extension ToReadOnlyList -> ToList().AsReadOnly()
-        return await AnsiConsoleExtensions.ShowProgressAsync(ctx => DownloadAsync(downloadContexts.ToList().AsReadOnly(), ctx))
+        return await AnsiConsoleExtensions.ShowProgressAsync(ctx => DownloadAsync(downloadContexts.AsReadOnlyList(), ctx))
                                           .ConfigureAwait(false);
     }
 }

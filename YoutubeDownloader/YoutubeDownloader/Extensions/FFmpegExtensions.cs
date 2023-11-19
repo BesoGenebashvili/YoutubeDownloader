@@ -2,12 +2,6 @@
 
 namespace YoutubeDownloader.Extensions;
 
-internal enum OperatingSystem : byte
-{
-    Windows,
-    Linux
-}
-
 public static class FFmpegExtensions
 {
     public static async Task ConfigureAsync(CancellationToken cancellationToken = default)
@@ -16,11 +10,7 @@ public static class FFmpegExtensions
         {
             if (!IsFFmpegAvailable())
             {
-                var operatingSystem = System.OperatingSystem.IsWindows()
-                                          ? OperatingSystem.Windows
-                                          : System.OperatingSystem.IsLinux()
-                                                ? OperatingSystem.Linux
-                                                : throw new ApplicationException("OS not supported");
+                var operatingSystem = OperatingSystemExtensions.GetOperatingSystem();
 
                 AnsiConsoleExtensions.MarkupLine("Downloading FFmpeg for ", operatingSystem.ToString(), AnsiColor.Green);
 
@@ -87,6 +77,7 @@ public static class FFmpegExtensions
             (OperatingSystem.Windows, false) => "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.2.1/ffmpeg-4.2.1-win-32.zip",
             (OperatingSystem.Linux, true) => "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-linux-64.zip",
             (OperatingSystem.Linux, false) => "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-linux-32.zip",
+            (OperatingSystem.MacOS, _) => "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-osx-64.zip",
             _ => throw new NotImplementedException(nameof(operatingSystem)),
         };
     }

@@ -51,7 +51,7 @@ public static class AnsiConsoleExtensions
     public static string PromptExportedFilePath() =>
         AnsiConsole.Prompt(
             new TextPrompt<string>("Enter [green]exported file[/] path:")
-                .PromptStyle("green")
+                //.PromptStyle("green")
                 .ValidationErrorMessage("[red]Invalid exported file path[/]")
                 .Validate(exportedFilePath => exportedFilePath switch
                 {
@@ -63,7 +63,7 @@ public static class AnsiConsoleExtensions
     public static PlaylistId PromptPlaylistId() =>
         AnsiConsole.Prompt(
             new TextPrompt<string>("Enter [green]playlist id[/] or [green]url[/]:")
-                .PromptStyle("green")
+                //.PromptStyle("green")
                 .ValidationErrorMessage("[red]Invalid playlist id or url[/]")
                 .Validate(playlistId => playlistId switch
                 {
@@ -75,7 +75,7 @@ public static class AnsiConsoleExtensions
     public static VideoId PromptVideoId() =>
         AnsiConsole.Prompt(
             new TextPrompt<string>("Enter [green]video id[/] or [green]url[/]:")
-                .PromptStyle("green")
+                //.PromptStyle("green")
                 .ValidationErrorMessage("[red]Invalid video id or url[/]")
                 .Validate(videoId => videoId switch
                 {
@@ -124,8 +124,8 @@ public static class AnsiConsoleExtensions
                     ]));
 
         return Enum.TryParse<AudioQuality>(downloadFormatAndQuality, out var audioQuality)
-                   ? (VideoId videoId) => new DownloadContext(videoId, new VideoConfiguration.MP3(audioQuality))
-                   : (VideoId videoId) => new DownloadContext(videoId, new VideoConfiguration.MP4(Enum.Parse<VideoQuality>(downloadFormatAndQuality)));
+                   ? (VideoId videoId) => new(videoId, new VideoConfiguration.MP3(audioQuality))
+                   : (VideoId videoId) => new(videoId, new VideoConfiguration.MP4(Enum.Parse<VideoQuality>(downloadFormatAndQuality)));
     }
 
     public static async Task<T> ShowProgressAsync<T>(Func<ProgressContext, Task<T>> action) =>
