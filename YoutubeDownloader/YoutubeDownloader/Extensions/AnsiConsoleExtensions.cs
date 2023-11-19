@@ -48,6 +48,24 @@ public static class AnsiConsoleExtensions
         return settingsLookup[selectedOption].First();
     }
 
+    public static IEnumerable<VideoId> SelectVideoIds(IEnumerable<VideoId> videoIds)
+    {
+        var selection = AnsiConsole.Prompt(
+                            new MultiSelectionPrompt<string>()
+                                .Title("Select [green]video ids[/] to download:")
+                                .PageSize(10)
+                                .MoreChoicesText("[grey](Move up and down to reveal more video ids)[/]")
+                                .InstructionsText(
+                                    "[grey](Press [blue]<space>[/] to toggle a video id, " +
+                                    "[green]<enter>[/] to accept)[/]")
+                                .AddChoiceGroup(
+                                    "Select All",
+                                    videoIds.Select(v => v.ToString())));
+
+        return selection.Where(x => x is not "Select All")
+                        .Select(VideoId.Parse);
+    }
+
     public static string PromptExportedFilePath() =>
         AnsiConsole.Prompt(
             new TextPrompt<string>("Enter [green]exported file[/] path:")

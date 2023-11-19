@@ -1,4 +1,5 @@
 ﻿using Spectre.Console;
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using YoutubeDownloader.Extensions;
 using YoutubeDownloader.Models;
@@ -132,13 +133,18 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
             return emptyDownloadResults;
         }
 
+        var selectedVideoIds = AnsiConsoleExtensions.SelectVideoIds(failedDownloads.Select(f => f.VideoId));
+
+        var failedDownloadsToRetry = failedDownloads.Where(f => selectedVideoIds.Contains(f.VideoId))
+                                                    .ToImmutableList();
+
         var failedDownloadResendSetting = AnsiConsoleExtensions.SelectFailedDownloadResendSettings(
             [
                 FailedDownloadResendSetting.KeepOriginal,
                 FailedDownloadResendSetting.OverrideWithNew
             ]);
 
-        var downloadContexts = failedDownloads.Select(f => f.ToDownloadContext());
+        var downloadContexts = failedDownloadsToRetry.Select(f => f.ToDownloadContext());
 
         downloadContexts = failedDownloadResendSetting is FailedDownloadResendSetting.OverrideWithNew
                                ? downloadContexts.Select(d => getDownloadContext(d.VideoId))
