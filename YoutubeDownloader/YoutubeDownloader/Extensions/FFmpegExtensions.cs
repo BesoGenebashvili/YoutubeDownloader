@@ -67,7 +67,7 @@ public static class FFmpegExtensions
         string GetFFmpegFileName(OperatingSystem operatingSystem) => operatingSystem switch
         {
             OperatingSystem.Windows => "ffmpeg.exe",
-            OperatingSystem.Linux => "ffmpeg",
+            OperatingSystem.Linux or OperatingSystem.MacOS => "ffmpeg",
             _ => throw new NotImplementedException(nameof(operatingSystem)),
         };
 

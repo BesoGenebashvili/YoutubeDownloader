@@ -95,14 +95,12 @@ public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditServi
         var availableFailedRecords = GetAvailableFailedRecords();
 
         // TODO: Review & Refactor
-        var records = failures.GroupBy(f => (f.VideoId, f.Configuration))
+        var content = failures.GroupBy(f => (f.VideoId, f.Configuration))
                               .Select(g => (failure: g.MaxBy(f => f.Timestamp)!, retryCount: (uint)g.Count()))
                               .Concat(availableFailedRecords)
                               .GroupBy(f => (f.failure.VideoId, f.failure.Configuration))
-                              .Select(g => (g.MaxBy(f => f.failure.Timestamp).failure, retryCount: (uint)g.Count()));
-
-        var content = records.Select(g => g.failure.ToCSVColumn(g.retryCount))
-                             .Prepend(headers);
+                              .Select(g => (g.MaxBy(f => f.failure.Timestamp).failure.ToCSVColumn((uint)g.Count())))
+                              .Prepend(headers);
 
         await File.WriteAllLinesAsync(
                       _settings.FailedDownloadsFilePath,
@@ -115,7 +113,7 @@ public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditServi
                 ? File.ReadAllLines(_settings.FailedDownloadsFilePath)
                       .Skip(1)
                       .Select(CSVAuditExtensions.ParseFailure)
-                : Enumerable.Empty<(Failure failure, uint retryCount)>();
+                : Enumerable.Empty<(Failure, uint)>();
     }
 
     private static bool ExistsWithFirstLine(string filePath, string firstLine) =>

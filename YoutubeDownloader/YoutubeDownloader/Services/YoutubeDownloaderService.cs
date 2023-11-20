@@ -10,6 +10,7 @@ using YoutubeExplode.Videos.Streams;
 using YoutubeDownloader.Models;
 using VideoQuality = YoutubeDownloader.Models.VideoQuality;
 using YoutubeDownloader.Extensions;
+using YoutubeExplode.Channels;
 
 namespace YoutubeDownloader.Services;
 
@@ -37,9 +38,15 @@ public sealed class YoutubeDownloaderService(YoutubeClient youtubeClient, IOptio
                                                  .GetVideosAsync(
                                                       playlistId,
                                                       cancellationToken)
-                                                 .ToListAsync(cancellationToken);
+                                                 .ToListAsync(cancellationToken)
+                                                 .ConfigureAwait(false);
 
         return playlistVideos.Select(x => x.Id);
+    }
+
+    public async Task<IEnumerable<PlaylistId>> GetPlaylistIdsFromChannelAsync(ChannelId channelId, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
     }
 
     public async Task<DownloadResult.Success> DownloadAsync(
@@ -101,13 +108,21 @@ public sealed class YoutubeDownloaderService(YoutubeClient youtubeClient, IOptio
             _ => throw new NotImplementedException(nameof(quality))
         };
 
+        var conversionRequestBuilder = new ConversionRequestBuilder(filePath)
+                                               .SetContainer(Container.Mp3)
+                                               .SetPreset(ConversionPreset.Medium);
+
+        if (!string.IsNullOrWhiteSpace(_settings.FFmpegPath))
+        {
+            conversionRequestBuilder.SetFFmpegPath(_settings.FFmpegPath);
+        }
+
         await _youtubeClient.Videos
-                            .Streams
                             .DownloadAsync(
-                                 streamInfo,
-                                 filePath,
-                                 progress,
-                                 cancellationToken: cancellationToken)
+                                [streamInfo],
+                                conversionRequestBuilder.Build(),
+                                progress,
+                                cancellationToken)
                             .ConfigureAwait(false);
 
         return streamInfo.Size.MegaBytes;
