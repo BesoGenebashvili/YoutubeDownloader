@@ -3,12 +3,14 @@ using System.Runtime.InteropServices;
 
 namespace YoutubeDownloader;
 
+#pragma warning disable CA1401 // P/Invokes should not be visible
 public static unsafe partial class ConsoleInterop
 {
     public const int MF_BYCOMMAND = 0x00000000;
     public const int SC_MINIMIZE = 0xF020;
     public const int SC_MAXIMIZE = 0xF030;
     public const int SC_SIZE = 0xF000;
+
 
     [LibraryImport("user32.dll")]
     public static partial int DeleteMenu(IntPtr hMenu, int nPosition, int wFlags);
@@ -19,6 +21,7 @@ public static unsafe partial class ConsoleInterop
     [LibraryImport("kernel32.dll")]
     public static partial IntPtr GetConsoleWindow();
 }
+#pragma warning restore CA1401 // P/Invokes should not be visible
 
 public static class ConsoleExtensions
 {
@@ -40,11 +43,11 @@ public static class ConsoleExtensions
         {
             var consoleWindow = ConsoleInterop.GetSystemMenu(ConsoleInterop.GetConsoleWindow(), false);
 
-#pragma warning disable CA1806
+#pragma warning disable CA1806 // Do not ignore method results
             ConsoleInterop.DeleteMenu(consoleWindow, ConsoleInterop.SC_MINIMIZE, ConsoleInterop.MF_BYCOMMAND);
             ConsoleInterop.DeleteMenu(consoleWindow, ConsoleInterop.SC_MAXIMIZE, ConsoleInterop.MF_BYCOMMAND);
             ConsoleInterop.DeleteMenu(consoleWindow, ConsoleInterop.SC_SIZE, ConsoleInterop.MF_BYCOMMAND);
-#pragma warning restore
+#pragma warning restore CA1806 // Do not ignore method results
         }
 
         static void AdjustWindowSize()

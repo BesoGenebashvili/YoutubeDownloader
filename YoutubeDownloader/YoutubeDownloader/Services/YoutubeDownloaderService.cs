@@ -30,7 +30,7 @@ public sealed class YoutubeDownloaderService(YoutubeClient youtubeClient, IOptio
                      : newFilename;
     }
 
-    public ValueTask<List<PlaylistVideo>> GetPlaylistVideosAsync(
+    public ValueTask<List<PlaylistVideo>> ListPlaylistVideosAsync(
         PlaylistId playlistId,
         CancellationToken cancellationToken = default) =>
         _youtubeClient.Playlists

@@ -36,11 +36,16 @@ public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditServi
         // Log
     }
 
-    public async Task<IReadOnlyCollection<Success>> ListSuccessfulDownloadsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyCollection<Success>> ListSuccessfulDownloadsAsync(
+        CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(_settings.SuccessfulDownloadsFilePath, nameof(_settings.SuccessfulDownloadsFilePath));
+        ArgumentException.ThrowIfNullOrWhiteSpace(
+            _settings.SuccessfulDownloadsFilePath, 
+            nameof(_settings.SuccessfulDownloadsFilePath));
 
-        var lines = await File.ReadAllLinesAsync(_settings.SuccessfulDownloadsFilePath, cancellationToken)
+        var lines = await File.ReadAllLinesAsync(
+                                  _settings.SuccessfulDownloadsFilePath, 
+                                  cancellationToken)
                               .ConfigureAwait(false);
 
         return lines.Skip(1)
@@ -49,11 +54,16 @@ public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditServi
                     .AsReadOnlyList();
     }
 
-    public async Task<IReadOnlyCollection<Failure>> ListFailedDownloadsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyCollection<Failure>> ListFailedDownloadsAsync(
+        CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(_settings.FailedDownloadsFilePath, nameof(_settings.FailedDownloadsFilePath));
+        ArgumentException.ThrowIfNullOrWhiteSpace(
+            _settings.FailedDownloadsFilePath, 
+            nameof(_settings.FailedDownloadsFilePath));
 
-        var lines = await File.ReadAllLinesAsync(_settings.FailedDownloadsFilePath, cancellationToken)
+        var lines = await File.ReadAllLinesAsync(
+                                  _settings.FailedDownloadsFilePath, 
+                                  cancellationToken)
                               .ConfigureAwait(false);
 
         return lines.Skip(1)
@@ -84,7 +94,7 @@ public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditServi
                   .ConfigureAwait(false);
     }
 
-    public async Task AuditFailedDownloadsAsync(
+    private async Task AuditFailedDownloadsAsync(
         IReadOnlyCollection<Failure> failures,
         CancellationToken cancellationToken = default)
     {

@@ -77,7 +77,7 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
     {
         var playlistId = AnsiConsoleExtensions.PromptPlaylistId();
 
-        var playlistVideos = await _youtubeDownloaderService.GetPlaylistVideosAsync(playlistId, cancellationToken)
+        var playlistVideos = await _youtubeDownloaderService.ListPlaylistVideosAsync(playlistId, cancellationToken)
                                                             .ConfigureAwait(false);
 
         var selectedVideos = AnsiConsoleExtensions.SelectVideoTitles(playlistVideos);
@@ -99,9 +99,9 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
                               .ConfigureAwait(false);
 
         var downloadContexts = lines.Skip(1)
-                                   .Where(l => !string.IsNullOrWhiteSpace(l))
-                                   .Select(l => getDownloadContext(GetVideoId(l)))
-                                   .AsReadOnlyList();
+                                    .Where(l => !string.IsNullOrWhiteSpace(l))
+                                    .Select(l => getDownloadContext(GetVideoId(l)))
+                                    .AsReadOnlyList();
 
         return await AnsiConsoleExtensions.ShowProgressAsync(ctx => DownloadAsync(downloadContexts, ctx))
                                           .ConfigureAwait(false);
@@ -115,7 +115,7 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
     public async Task<IReadOnlyCollection<DownloadResult>> DownloadFromFromFailedDownloadsAsync(
         Func<VideoId, DownloadContext> getDownloadContext,
         Func<CancellationToken, Task<IReadOnlyCollection<DownloadResult.Failure>>> getFailedDownloads,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var emptyDownloadResults = ReadOnlyCollection<DownloadResult>.Empty;
         IReadOnlyCollection<DownloadResult.Failure> failedDownloads = ReadOnlyCollection<DownloadResult.Failure>.Empty;
