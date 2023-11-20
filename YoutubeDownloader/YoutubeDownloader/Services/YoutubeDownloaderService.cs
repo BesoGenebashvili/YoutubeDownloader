@@ -8,9 +8,9 @@ using YoutubeDownloader.Settings;
 using YoutubeExplode.Playlists;
 using YoutubeExplode.Videos.Streams;
 using YoutubeDownloader.Models;
-using VideoQuality = YoutubeDownloader.Models.VideoQuality;
 using YoutubeDownloader.Extensions;
-using YoutubeExplode.Channels;
+using YoutubeExplode.Common;
+using VideoQuality = YoutubeDownloader.Models.VideoQuality;
 
 namespace YoutubeDownloader.Services;
 
@@ -30,24 +30,34 @@ public sealed class YoutubeDownloaderService(YoutubeClient youtubeClient, IOptio
                      : newFilename;
     }
 
-    public async Task<IEnumerable<VideoId>> GetVideoIdsFromPlaylistAsync(
+    public ValueTask<List<PlaylistVideo>> GetPlaylistVideosAsync(
         PlaylistId playlistId,
-        CancellationToken cancellationToken = default)
-    {
-        var playlistVideos = await _youtubeClient.Playlists
-                                                 .GetVideosAsync(
-                                                      playlistId,
-                                                      cancellationToken)
-                                                 .ToListAsync(cancellationToken)
-                                                 .ConfigureAwait(false);
+        CancellationToken cancellationToken = default) =>
+        _youtubeClient.Playlists
+                      .GetVideosAsync(
+                           playlistId,
+                           cancellationToken)
+                      .ToListAsync(cancellationToken);
 
-        return playlistVideos.Select(x => x.Id);
-    }
+    /* TODO
+    public ValueTask<Channel> GetChannelAsync(
+        ChannelHandle channelHandle, 
+        CancellationToken cancellationToken = default) =>
+        _youtubeClient.Channels
+                      .GetByHandleAsync(
+                          channelHandle,
+                          cancellationToken);
 
-    public async Task<IEnumerable<PlaylistId>> GetPlaylistIdsFromChannelAsync(ChannelId channelId, CancellationToken cancellationToken = default)
-    {
-        throw new NotImplementedException();
-    }
+    public async Task<IEnumerable<PlaylistVideo>> GetPlaylistVideosAsync(
+        ChannelId channelId, 
+        CancellationToken cancellationToken = default) =>
+        await _youtubeClient.Channels
+                            .GetUploadsAsync(
+                                channelId, 
+                                cancellationToken)
+                            .ToListAsync(cancellationToken)
+                            .ConfigureAwait(false);
+    */
 
     public async Task<DownloadResult.Success> DownloadAsync(
         DownloadContext downloadContext,
