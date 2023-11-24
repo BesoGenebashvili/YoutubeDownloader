@@ -91,7 +91,6 @@ public static class AnsiConsoleExtensions
     public static string PromptExportedFilePath() =>
         AnsiConsole.Prompt(
             new TextPrompt<string>("Enter [green]exported file[/] path:")
-                //.PromptStyle("green")
                 .ValidationErrorMessage("[red]Invalid exported file path[/]")
                 .Validate(exportedFilePath => exportedFilePath switch
                 {
@@ -103,7 +102,6 @@ public static class AnsiConsoleExtensions
     public static PlaylistId PromptPlaylistId() =>
         AnsiConsole.Prompt(
             new TextPrompt<string>("Enter [green]playlist id[/] or [green]url[/]:")
-                //.PromptStyle("green")
                 .ValidationErrorMessage("[red]Invalid playlist id or url[/]")
                 .Validate(playlistId => playlistId switch
                 {
@@ -115,7 +113,6 @@ public static class AnsiConsoleExtensions
     public static VideoId PromptVideoId() =>
         AnsiConsole.Prompt(
             new TextPrompt<string>("Enter [green]video id[/] or [green]url[/]:")
-                //.PromptStyle("green")
                 .ValidationErrorMessage("[red]Invalid video id or url[/]")
                 .Validate(videoId => videoId switch
                 {

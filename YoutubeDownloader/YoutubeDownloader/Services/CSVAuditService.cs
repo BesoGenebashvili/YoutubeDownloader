@@ -78,7 +78,6 @@ public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditServi
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(_settings.SuccessfulDownloadsFilePath, nameof(_settings.SuccessfulDownloadsFilePath));
 
-        // TODO: add "File Absolute Path"
         var headers = string.Join(',', CSVAuditExtensions.SuccessHeaders);
 
         var records = successes.Select(CSVAuditExtensions.ToCSVColumn);

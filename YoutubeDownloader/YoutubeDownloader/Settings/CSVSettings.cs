@@ -1,4 +1,5 @@
 ﻿using FluentValidation;
+using YoutubeDownloader.Validation;
 
 namespace YoutubeDownloader.Settings;
 
@@ -16,17 +17,29 @@ public sealed class CSVSettingsValidator : AbstractValidator<CSVSettings>
 {
     public CSVSettingsValidator()
     {
-        // TODO: validate file path for invalid characters
         // TODO: use camel case naming convention in error messages
 
         When(s => s.AuditSuccessful,
-            () => RuleFor(s => s.SuccessfulDownloadsFilePath)
+            () =>
+            {
+                RuleFor(s => s.SuccessfulDownloadsFilePath)
                     .NotEmpty()
-                    .WithMessage(s => "{PropertyName} must not be empty when 'auditSuccessful' is true."));
+                    .WithMessage(s => "{PropertyName} must not be empty when 'auditSuccessful' is true.");
+
+                RuleFor(s => s.SuccessfulDownloadsFilePath)!
+                    .MustBeValidFileName();
+            });
+
 
         When(s => s.AuditFailed,
-            () => RuleFor(s => s.FailedDownloadsFilePath)
+            () =>
+            {
+                RuleFor(s => s.FailedDownloadsFilePath)
                     .NotEmpty()
-                    .WithMessage(s => "{PropertyName} must not be empty when 'auditFailed' is true."));
+                    .WithMessage(s => "{PropertyName} must not be empty when 'auditFailed' is true.");
+
+                RuleFor(s => s.FailedDownloadsFilePath)!
+                    .MustBeValidFileName();
+            });
     }
 }

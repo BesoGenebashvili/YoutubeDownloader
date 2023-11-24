@@ -161,7 +161,6 @@ public sealed class YoutubeDownloaderService(YoutubeClient youtubeClient, IOptio
                                                  .Where(s => s.Container == Container.Mp4)
                                                  .OrderByDescending(s => s.VideoQuality);
 
-            // TODO: Refactor
             var streamInfo = muxedStreamInfos.FirstOrDefault(s => s.VideoQuality.Label == qualityLabel)
                                              ?? muxedStreamInfos.First(
                                                     s => s.VideoQuality.Label != "720p"

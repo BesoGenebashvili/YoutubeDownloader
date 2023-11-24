@@ -25,6 +25,23 @@ public class FilePathValidator<T> : PropertyValidator<T, string>
         "{PropertyName} must be a valid file path.";
 }
 
+public class FileNameValidator<T> : PropertyValidator<T, string>
+{
+    public override string Name => "FileNameValidator";
+
+    public override bool IsValid(ValidationContext<T> context, string value)
+    {
+        var fileName = Path.GetFileName(value);
+
+        var invalidChars = Path.GetInvalidFileNameChars();
+
+        return !fileName.Any(invalidChars.Contains);
+    }
+
+    protected override string GetDefaultMessageTemplate(string errorCode) =>
+        "{PropertyName} must be a valid file name.";
+}
+
 public static class ValidatorExtensions
 {
     public static IRuleBuilderOptions<T, string> MustBeValidFolderPath<T>(
@@ -34,4 +51,8 @@ public static class ValidatorExtensions
     public static IRuleBuilderOptions<T, string> MustBeValidFilePath<T>(
         this IRuleBuilder<T, string> ruleBuilder) =>
         ruleBuilder.SetValidator(new FilePathValidator<T>());
+
+    public static IRuleBuilderOptions<T, string> MustBeValidFileName<T>(
+        this IRuleBuilder<T, string> ruleBuilder) =>
+        ruleBuilder.SetValidator(new FileNameValidator<T>());
 }
