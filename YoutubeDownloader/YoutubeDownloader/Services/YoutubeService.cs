@@ -118,8 +118,11 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
 
         AnsiConsole.Clear();
 
-        var playlistVideos = await _youtubeDownloaderService.ListPlaylistVideosAsync(playlistId, cancellationToken)
-                                                            .ConfigureAwait(false);
+        var playlistVideos = await AnsiConsoleExtensions.ShowStatusAsync(
+                                                            "Gathering playlist videos", 
+                                                            async _ => await _youtubeDownloaderService.ListPlaylistVideosAsync(playlistId, cancellationToken)
+                                                                                                      .ConfigureAwait(false))
+                                                        .ConfigureAwait(false);
 
         var selectedVideos = AnsiConsoleExtensions.SelectVideoTitles(playlistVideos);
 

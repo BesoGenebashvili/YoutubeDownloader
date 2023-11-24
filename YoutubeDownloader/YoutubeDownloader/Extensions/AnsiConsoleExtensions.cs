@@ -1,5 +1,7 @@
 ﻿using Spectre.Console;
+using System.Threading;
 using YoutubeDownloader.Models;
+using YoutubeDownloader.Services;
 using YoutubeExplode.Playlists;
 using YoutubeExplode.Videos;
 
@@ -180,5 +182,11 @@ public static class AnsiConsoleExtensions
                              new SpinnerColumn(Spinner.Known.Point),
                          ])
                          .StartAsync(action)
+                         .ConfigureAwait(false);
+
+    public static async Task<T> ShowStatusAsync<T>(string message, Func<StatusContext, Task<T>> action) =>
+        await AnsiConsole.Status()
+                         .Spinner(Spinner.Known.Dots2)
+                         .StartAsync(message, action)
                          .ConfigureAwait(false);
 }
