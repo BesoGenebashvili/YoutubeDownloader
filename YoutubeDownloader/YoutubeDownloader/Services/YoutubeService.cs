@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using YoutubeDownloader.Extensions;
 using YoutubeDownloader.Models;
+using YoutubeExplode.Playlists;
 using YoutubeExplode.Videos;
 using AnsiConsoleExtensions = YoutubeDownloader.Extensions.AnsiConsoleExtensions;
 
@@ -62,7 +63,7 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
         }
         catch (Exception ex)
         {
-            AnsiConsoleExtensions.MarkupLine($"An error occurred while downloading data: ", ex.Message, AnsiColor.Red);
+            AnsiConsoleExtensions.MarkupLine("An error occurred while downloading data: ", ex.Message, AnsiColor.Red);
             throw;
         }
 
@@ -119,18 +120,32 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
         AnsiConsole.Clear();
 
         var playlistVideos = await AnsiConsoleExtensions.ShowStatusAsync(
-                                                            "Gathering playlist videos", 
-                                                            async _ => await _youtubeDownloaderService.ListPlaylistVideosAsync(playlistId, cancellationToken)
-                                                                                                      .ConfigureAwait(false))
+                                                            "Gathering playlist videos",
+                                                            async _ => await GetPlaylistVideos().ConfigureAwait(false))
                                                         .ConfigureAwait(false);
 
-        var selectedVideos = AnsiConsoleExtensions.SelectVideoTitles(playlistVideos);
+        var selectedVideoIds = AnsiConsoleExtensions.SelectVideoIdsFromTitles(
+                                   playlistVideos.Select(p => (p.Title, p.Id)));
 
-        var downloadContext = selectedVideos.Select(v => getDownloadContext(v.Id))
-                                            .AsReadOnlyList();
+        var downloadContext = selectedVideoIds.Select(getDownloadContext)
+                                              .AsReadOnlyList();
 
         return await AnsiConsoleExtensions.ShowProgressAsync(ctx => DownloadAsync(downloadContext, ctx))
                                           .ConfigureAwait(false);
+
+        async ValueTask<List<PlaylistVideo>> GetPlaylistVideos()
+        {
+            try
+            {
+                return await _youtubeDownloaderService.ListPlaylistVideosAsync(playlistId, cancellationToken)
+                                                      .ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                AnsiConsoleExtensions.MarkupLine($"An error occurred while gathering playlist videos: ", ex.Message, AnsiColor.Red);
+                throw;
+            }
+        }
     }
 
     public async Task<IReadOnlyCollection<DownloadResult>> DownloadFromYouTubeExportedFileAsync(

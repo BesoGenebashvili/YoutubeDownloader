@@ -7,8 +7,7 @@ using YoutubeDownloader.Settings;
 using YoutubeDownloader.Validation;
 using YoutubeDownloader.Extensions;
 using YoutubeDownloader.Services;
-
-Console.WriteLine("Hello, World!");
+using Microsoft.Extensions.Options;
 
 using var host = CreateHostBuilder(args).Build();
 using var scope = host.Services.CreateScope();
@@ -21,7 +20,11 @@ try
 
     // TODO: Estimate download time with GetInternetSpeed method
     using var ffmpegTokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(3));
-    await FFmpegExtensions.ConfigureAsync(ffmpegTokenSource.Token);
+    var ffmpegPath = services.GetRequiredService<IOptions<DownloaderSettings>>()
+                             .Value
+                             .FFmpegPath;
+
+    await FFmpegExtensions.ConfigureAsync(ffmpegPath, ffmpegTokenSource.Token);
 
     await services.GetRequiredService<App>()
                   .RunAsync(args)

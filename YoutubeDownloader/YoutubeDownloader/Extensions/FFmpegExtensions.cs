@@ -4,18 +4,22 @@ namespace YoutubeDownloader.Extensions;
 
 public static class FFmpegExtensions
 {
-    public static async Task ConfigureAsync(CancellationToken cancellationToken = default)
+    public static async Task ConfigureAsync(
+        string? ffmpegPath = null,
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            if (!IsFFmpegAvailable())
+            if (!IsFFmpegAvailable(ffmpegPath))
             {
                 var operatingSystem = OperatingSystemExtensions.GetOperatingSystem();
 
-                AnsiConsoleExtensions.MarkupLine("Downloading FFmpeg for ", operatingSystem.ToString(), AnsiColor.Green);
+                await AnsiConsoleExtensions.ShowStatusAsync(
+                                               $"Downloading FFmpeg for [green]{operatingSystem}[/]",
+                                               async _ => await DownloadFFmpegAsync(operatingSystem, cancellationToken).ConfigureAwait(false))
+                                           .ConfigureAwait(false);
 
-                await DownloadFFmpegAsync(operatingSystem, cancellationToken).ConfigureAwait(false);
-
+                // Log -> AnsiConsole.Clear()
                 AnsiConsoleExtensions.MarkupLine("FFmpeg downloaded ", "successfully", AnsiColor.Green);
             }
         }
@@ -30,6 +34,9 @@ public static class FFmpegExtensions
         }
     }
 
+    private static bool IsFFmpegPathValid(string? ffmpegPath) =>
+        !string.IsNullOrWhiteSpace(ffmpegPath) && File.Exists(ffmpegPath);
+
     private static bool IsFFmpegExistInDirectory() =>
         Directory.EnumerateFiles(AppDomain.CurrentDomain.BaseDirectory ?? Directory.GetCurrentDirectory())
                  .Any(f => Path.GetFileNameWithoutExtension(f)
@@ -38,9 +45,12 @@ public static class FFmpegExtensions
     private static bool IsFFmpegExistInEnvironmentVariables() =>
         Environment.GetEnvironmentVariable("ffmpeg") is not null;
 
-    private static bool IsFFmpegAvailable() => IsFFmpegExistInDirectory() || IsFFmpegExistInEnvironmentVariables();
+    private static bool IsFFmpegAvailable(string? ffmpegPath) =>
+        IsFFmpegPathValid(ffmpegPath) ||
+        IsFFmpegExistInDirectory() ||
+        IsFFmpegExistInEnvironmentVariables();
 
-    private static async Task DownloadFFmpegAsync(
+    private static async Task<string> DownloadFFmpegAsync(
         OperatingSystem operatingSystem,
         CancellationToken cancellationToken = default)
     {
@@ -63,6 +73,8 @@ public static class FFmpegExtensions
         await using var fileStream = File.Create(ffmpegFilePath);
 
         await zipEntryStream.CopyToAsync(fileStream, cancellationToken);
+
+        return ffmpegFilePath;
 
         string GetFFmpegFileName(OperatingSystem operatingSystem) => operatingSystem switch
         {

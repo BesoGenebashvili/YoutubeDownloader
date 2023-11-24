@@ -1,15 +1,20 @@
 ﻿using System.Text;
 using System.Runtime.InteropServices;
+using YoutubeDownloader.Extensions;
 
 namespace YoutubeDownloader;
 
-#pragma warning disable CA1401 // P/Invokes should not be visible
+/// <summary>
+/// https://learn.microsoft.com/en-us/windows/win32/menurc/wm-syscommand
+/// </summary>
 public static unsafe partial class ConsoleInterop
 {
     public const int MF_BYCOMMAND = 0x00000000;
     public const int SC_MINIMIZE = 0xF020;
     public const int SC_MAXIMIZE = 0xF030;
     public const int SC_SIZE = 0xF000;
+
+#pragma warning disable CA1401 // P/Invokes should not be visible
 
     [LibraryImport("user32.dll")]
     public static partial int DeleteMenu(IntPtr hMenu, int nPosition, int wFlags);
@@ -19,8 +24,9 @@ public static unsafe partial class ConsoleInterop
 
     [LibraryImport("kernel32.dll")]
     public static partial IntPtr GetConsoleWindow();
-}
+
 #pragma warning restore CA1401 // P/Invokes should not be visible
+}
 
 public static class ConsoleExtensions
 {
@@ -30,12 +36,13 @@ public static class ConsoleExtensions
         {
             DisableWindowButtons();
             AdjustWindowSize();
+            RemoveScrollbar();
             SetEncoding();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"An error occurred while configuring the console settings: {ex.Message}");
-            // TODO: Log.Error
+            AnsiConsoleExtensions.MarkupLine("An error occurred while configuring the console settings: ", ex.Message, AnsiColor.Red);
+            throw;
         }
 
         unsafe static void DisableWindowButtons()
@@ -53,6 +60,14 @@ public static class ConsoleExtensions
         {
             Console.WindowHeight = Console.LargestWindowHeight / 2;
             Console.WindowWidth = Console.LargestWindowWidth / 2;
+        }
+
+        static void RemoveScrollbar()
+        {
+#pragma warning disable CA1416 // Validate platform compatibility
+            Console.BufferWidth = Console.WindowWidth;
+            Console.BufferHeight = Console.WindowHeight;
+#pragma warning restore CA1416 // Validate platform compatibility
         }
 
         static void SetEncoding()

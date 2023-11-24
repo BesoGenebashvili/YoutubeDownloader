@@ -1,7 +1,5 @@
 ﻿using Spectre.Console;
-using System.Threading;
 using YoutubeDownloader.Models;
-using YoutubeDownloader.Services;
 using YoutubeExplode.Playlists;
 using YoutubeExplode.Videos;
 
@@ -50,8 +48,10 @@ public static class AnsiConsoleExtensions
         return settingsLookup[selectedOption].First();
     }
 
-    public static IEnumerable<PlaylistVideo> SelectVideoTitles(IEnumerable<PlaylistVideo> playlistVideos)
+    public static IEnumerable<VideoId> SelectVideoIdsFromTitles(IEnumerable<(string title, VideoId videoId)> playlistVideos)
     {
+        var markupRemovedTitles = playlistVideos.Select(x => (title: x.title.RemoveMarkup(), x.videoId));
+
         var selectedVideoTitles = AnsiConsole.Prompt(
                                       new MultiSelectionPrompt<string>()
                                           .Title("Select [green]video titles[/] to download:")
@@ -62,12 +62,12 @@ public static class AnsiConsoleExtensions
                                               "[green]<enter>[/] to accept)[/]")
                                           .AddChoiceGroup(
                                               "Select All",
-                                              playlistVideos.Select(v => v.Title)));
+                                              markupRemovedTitles.Select(x => x.title)));
 
-        return playlistVideos.IntersectBy(
-                                 selectedVideoTitles.Where(
-                                     t => t is not "Select All"),
-                                 v => v.Title);
+        return markupRemovedTitles.IntersectBy(
+                                      selectedVideoTitles.Where(t => t is not "Select All"),
+                                      v => v.title)
+                                  .Select(x => x.videoId);
     }
 
     public static IEnumerable<VideoId> SelectVideoIds(IEnumerable<VideoId> videoIds)
@@ -148,7 +148,7 @@ public static class AnsiConsoleExtensions
     {
         var downloadFormatAndQuality = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
-                .Title("Select download [green]format & quality[/]:")
+                .Title("Select download [green]format[/] & [green]quality[/]:")
                 .AddChoiceGroup(
                     FileFormat.MP3.ToString(),
                     [
@@ -158,14 +158,17 @@ public static class AnsiConsoleExtensions
                 .AddChoiceGroup(
                     FileFormat.MP4.ToString(),
                     [
-                        VideoQuality.SD.ToString(),
-                        VideoQuality.HD.ToString(),
-                        VideoQuality.FullHD.ToString()
+                        $"{VideoQuality.SD} [gray](480p)[/]",
+                        $"{VideoQuality.HD} [gray](720p)[/]",
+                        $"{VideoQuality.FullHD} [gray](1080p)[/]"
                     ]));
 
-        return Enum.TryParse<AudioQuality>(downloadFormatAndQuality, out var audioQuality)
+        var formatAndQuality = downloadFormatAndQuality.Split(' ')
+                                                       .First();
+
+        return Enum.TryParse<AudioQuality>(formatAndQuality, out var audioQuality)
                    ? (VideoId videoId) => new(videoId, new VideoConfiguration.MP3(audioQuality))
-                   : (VideoId videoId) => new(videoId, new VideoConfiguration.MP4(Enum.Parse<VideoQuality>(downloadFormatAndQuality)));
+                   : (VideoId videoId) => new(videoId, new VideoConfiguration.MP4(Enum.Parse<VideoQuality>(formatAndQuality)));
     }
 
     public static async Task<T> ShowProgressAsync<T>(Func<ProgressContext, Task<T>> action) =>
