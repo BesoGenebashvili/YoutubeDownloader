@@ -116,7 +116,7 @@ public static class CSVAuditExtensions
                     .ToString(TimestampFormat),
                 retryCount.ToString(CultureInfo.InvariantCulture),
                 self.ErrorMessage
-                    .Replace(',', '.')
+                    .Replace(',', ';')
             ];
 
         return string.Join(',', columns);

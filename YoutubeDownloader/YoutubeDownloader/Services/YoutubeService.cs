@@ -17,6 +17,8 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
         ProgressContext progressContext,
         CancellationToken cancellationToken = default)
     {
+        AnsiConsoleExtensions.MarkupLine("Downloading content, please wait...");
+
         try
         {
             using var semaphore = new SemaphoreSlim(30);
@@ -49,13 +51,48 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
                 }
             });
 
-            return await Task.WhenAll(downloadTasks)
-                             .ConfigureAwait(false);
+            var downloadResults = await Task.WhenAll(downloadTasks)
+                                            .ConfigureAwait(false);
+
+            AnsiConsole.Clear();
+
+            DisplayDownloadSummary(downloadResults);
+
+            return downloadResults;
         }
         catch (Exception ex)
         {
             AnsiConsoleExtensions.MarkupLine($"An error occurred while downloading data: ", ex.Message, AnsiColor.Red);
             throw;
+        }
+
+        void DisplayDownloadSummary(DownloadResult[] downloadResults)
+        {
+            var successesCount = downloadResults.Count(r => r is DownloadResult.Success);
+            var failuresCount = downloadContexts.Count - successesCount;
+
+            if (downloadContexts.Count == 1)
+            {
+                var (message, ansiColor) = successesCount == 1 ? ("Content downloaded successfully", AnsiColor.Green)
+                                                               : ("Failed to download content", AnsiColor.Red);
+
+                AnsiConsoleExtensions.MarkupLine(string.Empty, message, ansiColor);
+            }
+            else if (downloadContexts.Count > 1)
+            {
+                if (failuresCount == 0)
+                {
+                    AnsiConsoleExtensions.MarkupLine(string.Empty, $"Successfully downloaded {successesCount} files", AnsiColor.Green);
+                }
+                else
+                {
+                    AnsiConsole.MarkupLine($"Download partially successful. [green]Successes: {successesCount}[/]. [red]Failures: {failuresCount}[/].");
+                }
+            }
+            else
+            {
+                AnsiConsoleExtensions.MarkupLine(string.Empty, "No content selected", AnsiColor.Yellow);
+            }
         }
     }
 
@@ -64,6 +101,8 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
         CancellationToken cancellationToken = default)
     {
         var videoId = AnsiConsoleExtensions.PromptVideoId();
+
+        AnsiConsole.Clear();
 
         var downloadContext = getDownloadContext(videoId);
 
@@ -76,6 +115,8 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
         CancellationToken cancellationToken = default)
     {
         var playlistId = AnsiConsoleExtensions.PromptPlaylistId();
+
+        AnsiConsole.Clear();
 
         var playlistVideos = await _youtubeDownloaderService.ListPlaylistVideosAsync(playlistId, cancellationToken)
                                                             .ConfigureAwait(false);
@@ -94,6 +135,8 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
         CancellationToken cancellationToken = default)
     {
         var exportedFilePath = AnsiConsoleExtensions.PromptExportedFilePath();
+
+        AnsiConsole.Clear();
 
         var lines = await File.ReadAllLinesAsync(exportedFilePath, cancellationToken)
                               .ConfigureAwait(false);
@@ -137,6 +180,8 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
         }
 
         var selectedVideoIds = AnsiConsoleExtensions.SelectVideoIds(failedDownloads.Select(f => f.VideoId));
+
+        AnsiConsole.Clear();
 
         var failedDownloadsToRetry = failedDownloads.Where(f => selectedVideoIds.Contains(f.VideoId))
                                                     .ToImmutableList();

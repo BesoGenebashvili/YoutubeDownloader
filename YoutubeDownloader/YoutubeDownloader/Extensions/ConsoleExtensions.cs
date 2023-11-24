@@ -11,7 +11,6 @@ public static unsafe partial class ConsoleInterop
     public const int SC_MAXIMIZE = 0xF030;
     public const int SC_SIZE = 0xF000;
 
-
     [LibraryImport("user32.dll")]
     public static partial int DeleteMenu(IntPtr hMenu, int nPosition, int wFlags);
 
