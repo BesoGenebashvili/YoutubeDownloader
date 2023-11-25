@@ -108,7 +108,7 @@ public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditServi
                               .Select(g => (failure: g.MaxBy(f => f.Timestamp)!, retryCount: (uint)g.Count()))
                               .Concat(availableFailedRecords)
                               .GroupBy(f => (f.failure.VideoId, f.failure.Configuration))
-                              .Select(g => (g.MaxBy(f => f.failure.Timestamp).failure.ToCSVColumn((uint)g.Count())))
+                              .Select(g => g.MaxBy(f => f.failure.Timestamp).failure.ToCSVColumn((uint)g.Count()))
                               .Prepend(headers);
 
         await File.WriteAllLinesAsync(

@@ -19,6 +19,7 @@ public sealed class DownloaderSettingsValidator : AbstractValidator<DownloaderSe
 
         RuleFor(s => s.SaveFolderPath)
             .NotEmpty()
+            .MustBeValidFolderName()
             .MustBeValidFolderPath();
 
 #pragma warning disable CS8620
