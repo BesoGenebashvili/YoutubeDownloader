@@ -6,6 +6,7 @@ public enum DownloadOption : byte
 {
     FromVideoLink,
     FromPlaylistLink,
+    FromChannelUploads,
     FromYouTubeExportedFile,
     FromFailedDownloads
 }

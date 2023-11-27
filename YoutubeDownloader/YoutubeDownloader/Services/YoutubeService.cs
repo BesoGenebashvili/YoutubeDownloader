@@ -121,7 +121,7 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
 
         var playlistVideos = await AnsiConsoleExtensions.ShowStatusAsync(
                                                             "Gathering playlist videos",
-                                                            async _ => await GetPlaylistVideos().ConfigureAwait(false))
+                                                            async _ => await ListPlaylistVideosAsync().ConfigureAwait(false))
                                                         .ConfigureAwait(false);
 
         var selectedVideoIds = AnsiConsoleExtensions.SelectVideoIdsFromTitles(
@@ -133,16 +133,57 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
         return await AnsiConsoleExtensions.ShowProgressAsync(ctx => DownloadAsync(downloadContext, ctx))
                                           .ConfigureAwait(false);
 
-        async ValueTask<List<PlaylistVideo>> GetPlaylistVideos()
+        async ValueTask<List<PlaylistVideo>> ListPlaylistVideosAsync()
         {
             try
             {
-                return await _youtubeDownloaderService.ListPlaylistVideosAsync(playlistId, cancellationToken)
+                return await _youtubeDownloaderService.ListPlaylistVideosAsync(
+                                                          playlistId, 
+                                                          cancellationToken)
                                                       .ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 AnsiConsoleExtensions.MarkupLine($"An error occurred while gathering playlist videos: ", ex.Message, AnsiColor.Red);
+                throw;
+            }
+        }
+    }
+
+    public async Task<IReadOnlyCollection<DownloadResult>> DownloadFromChannelUploadsAsync(
+        Func<VideoId, DownloadContext> getDownloadContext,
+        CancellationToken cancellationToken = default)
+    {
+        var channelId = AnsiConsoleExtensions.PromptChannelId();
+
+        AnsiConsole.Clear();
+
+        var playlistVideos = await AnsiConsoleExtensions.ShowStatusAsync(
+                                                            "Gathering channel uploads",
+                                                            async _ => await ListChannelUploadsAsync().ConfigureAwait(false))
+                                                        .ConfigureAwait(false);
+
+        var selectedVideoIds = AnsiConsoleExtensions.SelectVideoIdsFromTitles(
+                                   playlistVideos.Select(p => (p.Title, p.Id)));
+
+        var downloadContext = selectedVideoIds.Select(getDownloadContext)
+                                              .AsReadOnlyList();
+
+        return await AnsiConsoleExtensions.ShowProgressAsync(ctx => DownloadAsync(downloadContext, ctx))
+                                          .ConfigureAwait(false);
+
+        async ValueTask<List<PlaylistVideo>> ListChannelUploadsAsync()
+        {
+            try
+            {
+                return await _youtubeDownloaderService.ListChannelUploadsAsync(
+                                                          channelId, 
+                                                          cancellationToken)
+                                                      .ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                AnsiConsoleExtensions.MarkupLine($"An error occurred while gathering channel uploads: ", ex.Message, AnsiColor.Red);
                 throw;
             }
         }

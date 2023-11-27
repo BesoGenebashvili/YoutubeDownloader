@@ -17,6 +17,7 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
             [
                 DownloadOption.FromVideoLink,
                 DownloadOption.FromPlaylistLink,
+                DownloadOption.FromChannelUploads,
                 DownloadOption.FromYouTubeExportedFile,
                 DownloadOption.FromFailedDownloads
             ]);
@@ -32,6 +33,10 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
             DownloadOption.FromPlaylistLink => _youtubeService.DownloadFromPlaylistLinkAsync(
                                                                   getDownloadContext,
                                                                   cancellationToken),
+
+            DownloadOption.FromChannelUploads => _youtubeService.DownloadFromChannelUploadsAsync(
+                                                                    getDownloadContext,
+                                                                    cancellationToken),
 
             DownloadOption.FromYouTubeExportedFile => _youtubeService.DownloadFromYouTubeExportedFileAsync(
                                                                          getDownloadContext,

@@ -10,6 +10,7 @@ using YoutubeExplode.Videos.Streams;
 using YoutubeDownloader.Models;
 using YoutubeDownloader.Extensions;
 using YoutubeExplode.Common;
+using YoutubeExplode.Channels;
 using VideoQuality = YoutubeDownloader.Models.VideoQuality;
 
 namespace YoutubeDownloader.Services;
@@ -39,25 +40,17 @@ public sealed class YoutubeDownloaderService(YoutubeClient youtubeClient, IOptio
                            cancellationToken)
                       .ToListAsync(cancellationToken);
 
-    /* TODO
-    public ValueTask<Channel> GetChannelAsync(
-        ChannelHandle channelHandle, 
+    // TODO
+    public ValueTask<Channel> GetChannelAsync() => throw new NotImplementedException();
+
+    public ValueTask<List<PlaylistVideo>> ListChannelUploadsAsync(
+        ChannelId channelId,
         CancellationToken cancellationToken = default) =>
         _youtubeClient.Channels
-                      .GetByHandleAsync(
-                          channelHandle,
-                          cancellationToken);
-
-    public async Task<IEnumerable<PlaylistVideo>> GetPlaylistVideosAsync(
-        ChannelId channelId, 
-        CancellationToken cancellationToken = default) =>
-        await _youtubeClient.Channels
-                            .GetUploadsAsync(
-                                channelId, 
-                                cancellationToken)
-                            .ToListAsync(cancellationToken)
-                            .ConfigureAwait(false);
-    */
+                      .GetUploadsAsync(
+                          channelId,
+                          cancellationToken)
+                      .ToListAsync(cancellationToken);
 
     public async Task<DownloadResult.Success> DownloadAsync(
         DownloadContext downloadContext,

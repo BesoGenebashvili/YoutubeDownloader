@@ -1,5 +1,6 @@
 ﻿using Spectre.Console;
 using YoutubeDownloader.Models;
+using YoutubeExplode.Channels;
 using YoutubeExplode.Playlists;
 using YoutubeExplode.Videos;
 
@@ -110,6 +111,17 @@ public static class AnsiConsoleExtensions
                     _ => ValidationResult.Success()
                 }));
 
+    public static ChannelId PromptChannelId() =>
+        AnsiConsole.Prompt(
+            new TextPrompt<string>("Enter [green]channel id[/] or [green]url[/]:")
+                .ValidationErrorMessage("[red]Invalid channel id or url[/]")
+                .Validate(channelId => channelId switch
+                {
+                    var v when string.IsNullOrWhiteSpace(v) => ValidationResult.Error("[red]channel id or url cannot be empty or whitespace[/]"),
+                    var v when ChannelId.TryParse(v) is null => ValidationResult.Error("[red]Invalid channel id or url format[/]"),
+                    _ => ValidationResult.Success()
+                }));
+
     public static VideoId PromptVideoId() =>
         AnsiConsole.Prompt(
             new TextPrompt<string>("Enter [green]video id[/] or [green]url[/]:")
@@ -127,6 +139,7 @@ public static class AnsiConsoleExtensions
         {
             DownloadOption.FromVideoLink => "From video link",
             DownloadOption.FromPlaylistLink => "From playlist link",
+            DownloadOption.FromChannelUploads => "From channel uploads",
             DownloadOption.FromYouTubeExportedFile => "From YouTube exported file",
             DownloadOption.FromFailedDownloads => "From failed downloads",
             _ => throw new NotImplementedException(nameof(option))
