@@ -30,21 +30,27 @@ public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditServi
             _ => []
         };
 
-        await Task.WhenAll(auditTasks)
-                  .ConfigureAwait(false);
-
-        // Log
+        try
+        {
+            await Task.WhenAll(auditTasks)
+                      .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            AnsiConsoleExtensions.MarkupLine("An error occurred while auditing data: ", ex.Message, AnsiColor.Red);
+            throw;
+        }
     }
 
     public async Task<IReadOnlyCollection<Success>> ListSuccessfulDownloadsAsync(
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(
-            _settings.SuccessfulDownloadsFilePath, 
+            _settings.SuccessfulDownloadsFilePath,
             nameof(_settings.SuccessfulDownloadsFilePath));
 
         var lines = await File.ReadAllLinesAsync(
-                                  _settings.SuccessfulDownloadsFilePath, 
+                                  _settings.SuccessfulDownloadsFilePath,
                                   cancellationToken)
                               .ConfigureAwait(false);
 
@@ -58,11 +64,11 @@ public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditServi
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(
-            _settings.FailedDownloadsFilePath, 
+            _settings.FailedDownloadsFilePath,
             nameof(_settings.FailedDownloadsFilePath));
 
         var lines = await File.ReadAllLinesAsync(
-                                  _settings.FailedDownloadsFilePath, 
+                                  _settings.FailedDownloadsFilePath,
                                   cancellationToken)
                               .ConfigureAwait(false);
 

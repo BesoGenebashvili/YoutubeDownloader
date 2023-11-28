@@ -8,6 +8,7 @@ using YoutubeDownloader.Validation;
 using YoutubeDownloader.Extensions;
 using YoutubeDownloader.Services;
 using Microsoft.Extensions.Options;
+using Serilog;
 
 using var host = CreateHostBuilder(args).Build();
 using var scope = host.Services.CreateScope();
@@ -24,7 +25,8 @@ try
                              .Value
                              .FFmpegPath;
 
-    await FFmpegExtensions.ConfigureAsync(ffmpegPath, ffmpegTokenSource.Token);
+    await FFmpegExtensions.ConfigureAsync(ffmpegPath, ffmpegTokenSource.Token)
+                          .ConfigureAwait(false);
 
     await services.GetRequiredService<App>()
                   .RunAsync(args)
@@ -32,13 +34,24 @@ try
 }
 catch (Exception ex)
 {
-    Console.WriteLine(ex);
+    Console.WriteLine($"For more detailed information, please check the log file located at: .\\logs");
+    Log.Error("An error occurred: {ErrorMessage}", ex);
 }
 
 static IHostBuilder CreateHostBuilder(string[] args) =>
     Host.CreateDefaultBuilder(args)
         .ConfigureServices((host, services) =>
         {
+            const string logOutputTemplate = "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level}] {Indent:l}{Message}{NewLine}{Exception}";
+
+            Log.Logger = new LoggerConfiguration()
+                                .MinimumLevel.Information()
+                                .WriteTo.File(
+                                    path: "logs/log.txt", 
+                                    outputTemplate: logOutputTemplate, 
+                                    rollingInterval: RollingInterval.Day)
+                                .CreateLogger();
+
             services.AddValidatorsFromAssemblyContaining<Program>();
 
             services.AddOptions<DownloaderSettings>()

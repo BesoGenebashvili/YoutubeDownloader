@@ -25,9 +25,14 @@ public sealed class DownloaderSettingsValidator : AbstractValidator<DownloaderSe
 #pragma warning disable CS8620
         // dotnet/runetime issue #36510
         When(s => s.FFmpegPath != string.Empty,
-            () => RuleFor(s => s.FFmpegPath)
-                      .NotEmpty()
-                      .MustBeValidFilePath());
+            () =>
+            {
+                RuleFor(s => s.FFmpegPath)
+                    .NotEmpty();
+
+                RuleFor(s => s.FFmpegPath)
+                    .MustBeValidFilePath();
+            });
 #pragma warning restore
     }
 }
