@@ -1,4 +1,5 @@
 ﻿using Spectre.Console;
+using System.Text.RegularExpressions;
 using YoutubeDownloader.Models;
 using YoutubeExplode.Channels;
 using YoutubeExplode.Playlists;
@@ -16,6 +17,10 @@ public enum AnsiColor
 
 public static class AnsiConsoleExtensions
 {
+    public static string RemoveBracketsAndMarkup(this string value) =>
+        Regex.Replace(value, "[\\[\\]]", string.Empty)
+             .RemoveMarkup();
+
     public static void MarkupLine(
         string text,
         string? textWithMarkup = null,
@@ -51,7 +56,7 @@ public static class AnsiConsoleExtensions
 
     public static IEnumerable<VideoId> SelectVideoIdsFromTitles(IEnumerable<(string title, VideoId videoId)> playlistVideos)
     {
-        var markupRemovedTitles = playlistVideos.Select(x => (title: x.title.RemoveMarkup(), x.videoId));
+        var markupRemovedTitles = playlistVideos.Select(x => (title: x.title.RemoveBracketsAndMarkup(), x.videoId));
 
         var selectedVideoTitles = AnsiConsole.Prompt(
                                       new MultiSelectionPrompt<string>()
@@ -162,23 +167,26 @@ public static class AnsiConsoleExtensions
                 .AddChoiceGroup(
                     FileFormat.MP3.ToString(),
                     [
-                        AudioQuality.LowBitrate.ToString(),
-                        AudioQuality.HighBitrate.ToString()
+                        "Low Bitrate",
+                        "High Bitrate"
                     ])
                 .AddChoiceGroup(
                     FileFormat.MP4.ToString(),
                     [
-                        $"{VideoQuality.SD} [gray](480p)[/]",
-                        $"{VideoQuality.HD} [gray](720p)[/]",
-                        $"{VideoQuality.FullHD} [gray](1080p)[/]"
+                        "SD [gray](480p)[/]",
+                        "HD [gray](720p)[/]",
+                        "Full HD [gray](1080p)[/]"
                     ]));
 
-        var formatAndQuality = downloadFormatAndQuality.Split(' ')
-                                                       .First();
-
-        return Enum.TryParse<AudioQuality>(formatAndQuality, out var audioQuality)
-                   ? (VideoId videoId) => new(videoId, new VideoConfiguration.MP3(audioQuality))
-                   : (VideoId videoId) => new(videoId, new VideoConfiguration.MP4(Enum.Parse<VideoQuality>(formatAndQuality)));
+        return videoId => downloadFormatAndQuality.RemoveMarkup() switch
+        {
+            "Low Bitrate" => new(videoId, new VideoConfiguration.MP3(AudioQuality.LowBitrate)),
+            "High Bitrate" => new(videoId, new VideoConfiguration.MP3(AudioQuality.HighBitrate)),
+            ['S', 'D', ..] => new(videoId, new VideoConfiguration.MP4(VideoQuality.SD)),
+            ['H', 'D', ..] => new(videoId, new VideoConfiguration.MP4(VideoQuality.HD)),
+            ['F', 'u', 'l', 'l', ..] => new(videoId, new VideoConfiguration.MP4(VideoQuality.FullHD)),
+            _ => throw new NotImplementedException(nameof(downloadFormatAndQuality))
+        };
     }
 
     public static async Task<T> ShowProgressAsync<T>(Func<ProgressContext, Task<T>> action) =>

@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using System.Text.RegularExpressions;
 using YoutubeDownloader.Models;
 using static YoutubeDownloader.Models.DownloadResult;
 
@@ -27,6 +28,9 @@ public static class CSVAuditExtensions
             "Timestamp",
             "Error Message"
         ];
+
+    private static string ReplaceInvalidCharactersWithSemicolons(this string self) =>
+        Regex.Replace(self, "[,\n]", ";");
 
     private static VideoConfiguration ParseVideoConfiguration(string fileFormat, string videoQuality) =>
         Enum.Parse<FileFormat>(fileFormat, true) switch
@@ -90,7 +94,8 @@ public static class CSVAuditExtensions
         string[] columns =
             [
                 self.VideoId,
-                self.FileName,
+                self.FileName
+                    .ReplaceInvalidCharactersWithSemicolons(),
                 fileFormat,
                 quality,
                 self.Timestamp
@@ -116,7 +121,7 @@ public static class CSVAuditExtensions
                     .ToString(TimestampFormat),
                 retryCount.ToString(CultureInfo.InvariantCulture),
                 self.ErrorMessage
-                    .Replace(',', ';')
+                    .ReplaceInvalidCharactersWithSemicolons()
             ];
 
         return string.Join(',', columns);

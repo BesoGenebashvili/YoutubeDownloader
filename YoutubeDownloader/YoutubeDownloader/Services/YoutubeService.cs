@@ -28,9 +28,9 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
             {
                 await semaphore.WaitAsync(cancellationToken);
 
-                var downloadTask = progressContext.AddTask($"[green]{downloadContext.VideoId}[/]");
+                var downloadTask = progressContext.AddTask($"[green]{downloadContext.VideoId}[/]", maxValue: 1);
 
-                var progress = new Progress<double>(value => downloadTask.Increment(value));
+                var progress = new Progress<double>(value => downloadTask.Value = value);
 
                 try
                 {
@@ -44,7 +44,7 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
                 {
                     downloadTask.StopTask();
 
-                    return downloadContext.Failure(ex.Message.Replace(',', '.'));
+                    return downloadContext.Failure(ex.Message);
                 }
                 finally
                 {
@@ -138,7 +138,7 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
             try
             {
                 return await _youtubeDownloaderService.ListPlaylistVideosAsync(
-                                                          playlistId, 
+                                                          playlistId,
                                                           cancellationToken)
                                                       .ConfigureAwait(false);
             }
@@ -177,7 +177,7 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
             try
             {
                 return await _youtubeDownloaderService.ListChannelUploadsAsync(
-                                                          channelId, 
+                                                          channelId,
                                                           cancellationToken)
                                                       .ConfigureAwait(false);
             }
@@ -202,6 +202,7 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
 
         var downloadContexts = lines.Skip(1)
                                     .Where(l => !string.IsNullOrWhiteSpace(l))
+                                    .Distinct()
                                     .Select(l => getDownloadContext(GetVideoId(l)))
                                     .AsReadOnlyList();
 
