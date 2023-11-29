@@ -1,6 +1,4 @@
-﻿using System.IO.Compression;
-
-namespace YoutubeDownloader.Extensions;
+﻿namespace YoutubeDownloader.Extensions;
 
 public static class FFmpegExtensions
 {
@@ -60,19 +58,14 @@ public static class FFmpegExtensions
         await using var stream = await httpClient.GetStreamAsync(releaseUrl, cancellationToken)
                                                  .ConfigureAwait(false);
 
-        using var zip = new ZipArchive(stream, ZipArchiveMode.Read);
-
         var ffmpegFileName = GetFFmpegFileName(operatingSystem);
-
         var ffmpegFilePath = Path.Combine(Environment.CurrentDirectory, ffmpegFileName);
 
-        var zipEntry = zip.GetEntry(ffmpegFileName)
-                          ?? throw new FileNotFoundException($"{ffmpegFileName} not found in {Environment.CurrentDirectory}");
-
-        await using var zipEntryStream = zipEntry.Open();
-        await using var fileStream = File.Create(ffmpegFilePath);
-
-        await zipEntryStream.CopyToAsync(fileStream, cancellationToken);
+        await stream.UnpackFromZipInFileAsync(
+                        ffmpegFileName,
+                        ffmpegFilePath,
+                        cancellationToken)
+                    .ConfigureAwait(false);
 
         return ffmpegFilePath;
 

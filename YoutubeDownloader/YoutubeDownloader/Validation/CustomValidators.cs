@@ -60,18 +60,18 @@ public class FileNameValidator<T> : PropertyValidator<T, string>
 public static class ValidatorExtensions
 {
     public static IRuleBuilderOptions<T, string> MustBeValidFolderPath<T>(
-        this IRuleBuilder<T, string> ruleBuilder) =>
-        ruleBuilder.SetValidator(new FolderPathValidator<T>());
+        this IRuleBuilder<T, string> self) =>
+        self.SetValidator(new FolderPathValidator<T>());
 
     public static IRuleBuilderOptions<T, string> MustBeValidFilePath<T>(
-        this IRuleBuilder<T, string> ruleBuilder) =>
-        ruleBuilder.SetValidator(new FilePathValidator<T>());
+        this IRuleBuilder<T, string> self) =>
+        self.SetValidator(new FilePathValidator<T>());
 
     public static IRuleBuilderOptions<T, string> MustBeValidFolderName<T>(
-        this IRuleBuilder<T, string> ruleBuilder) =>
-        ruleBuilder.SetValidator(new FolderNameValidator<T>());
+        this IRuleBuilder<T, string> self) =>
+        self.SetValidator(new FolderNameValidator<T>());
 
     public static IRuleBuilderOptions<T, string> MustBeValidFileName<T>(
-        this IRuleBuilder<T, string> ruleBuilder) =>
-        ruleBuilder.SetValidator(new FileNameValidator<T>());
+        this IRuleBuilder<T, string> self) =>
+        self.SetValidator(new FileNameValidator<T>());
 }

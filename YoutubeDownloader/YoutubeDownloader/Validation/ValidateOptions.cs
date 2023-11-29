@@ -26,11 +26,11 @@ public sealed class ValidateOptions<TOptions>(IEnumerable<IValidator<TOptions>> 
 
 public static class ValidateOptionsExtensions
 {
-    public static OptionsBuilder<TOptions> ValidateFluently<TOptions>(this OptionsBuilder<TOptions> optionsBuilder)
+    public static OptionsBuilder<TOptions> ValidateFluently<TOptions>(this OptionsBuilder<TOptions> self)
         where TOptions : class
     {
-        optionsBuilder.Services.AddSingleton<IValidateOptions<TOptions>, ValidateOptions<TOptions>>();
+        self.Services.AddSingleton<IValidateOptions<TOptions>, ValidateOptions<TOptions>>();
 
-        return optionsBuilder;
+        return self;
     }
 }

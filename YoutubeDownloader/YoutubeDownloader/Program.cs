@@ -19,13 +19,14 @@ try
 {
     ConsoleExtensions.Configure();
 
-    // TODO: Estimate download time with GetInternetSpeed method
-    using var ffmpegTokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(3));
-    var ffmpegPath = services.GetRequiredService<IOptions<DownloaderSettings>>()
-                             .Value
-                             .FFmpegPath;
+    var downloaderSettings = services.GetRequiredService<IOptions<DownloaderSettings>>()
+                                     .Value;
 
-    await FFmpegExtensions.ConfigureAsync(ffmpegPath, ffmpegTokenSource.Token)
+    FileSystemExtensions.CreateDirectoryIfNotExists(downloaderSettings.SaveFolderPath);
+
+    // TODO: Estimate download time with GetInternetSpeed method
+    using var ffmpegConfigurationTokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+    await FFmpegExtensions.ConfigureAsync(downloaderSettings.FFmpegPath, ffmpegConfigurationTokenSource.Token)
                           .ConfigureAwait(false);
 
     await services.GetRequiredService<App>()
@@ -40,15 +41,15 @@ catch (Exception ex)
 
 static IHostBuilder CreateHostBuilder(string[] args) =>
     Host.CreateDefaultBuilder(args)
-        .ConfigureServices((host, services) =>
+        .ConfigureServices((_, services) =>
         {
             const string logOutputTemplate = "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level}] {Indent:l}{Message}{NewLine}{Exception}";
 
             Log.Logger = new LoggerConfiguration()
                                 .MinimumLevel.Information()
                                 .WriteTo.File(
-                                    path: "logs/log.txt", 
-                                    outputTemplate: logOutputTemplate, 
+                                    path: "logs/log.txt",
+                                    outputTemplate: logOutputTemplate,
                                     rollingInterval: RollingInterval.Day)
                                 .CreateLogger();
 

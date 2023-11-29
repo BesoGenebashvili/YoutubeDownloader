@@ -17,7 +17,7 @@ public enum AnsiColor
 
 public static class AnsiConsoleExtensions
 {
-    public static string RemoveBracketsAndMarkup(this string value) =>
+    private static string RemoveBracketsAndMarkup(this string value) =>
         Regex.Replace(value, "[\\[\\]]", string.Empty)
              .RemoveMarkup();
 
