@@ -1,7 +1,6 @@
 ﻿using YoutubeExplode;
 using YoutubeExplode.Converter;
 using YoutubeExplode.Videos;
-using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 using FluentValidation;
 using YoutubeDownloader.Settings;
@@ -22,9 +21,7 @@ public sealed class YoutubeDownloaderService(YoutubeClient youtubeClient, IOptio
 
     private static string ResolveFilename(string title, VideoId videoId)
     {
-        var regexPattern = $"[{Regex.Escape(new(Path.GetInvalidFileNameChars()))}]";
-
-        var newFilename = Regex.Replace(title, regexPattern, string.Empty);
+        var newFilename = FileSystemExtensions.RemoveInvalidCharactersFromFileName(title);
 
         return string.IsNullOrWhiteSpace(newFilename)
                      ? videoId

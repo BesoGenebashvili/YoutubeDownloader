@@ -1,4 +1,5 @@
 ﻿using System.IO.Compression;
+using System.Text.RegularExpressions;
 
 namespace YoutubeDownloader.Extensions;
 
@@ -8,6 +9,18 @@ public static class FileSystemExtensions
     {
         if (!Directory.Exists(path))
             Directory.CreateDirectory(path);
+    }
+
+    public static bool FileExistsWithFirstLine(string filePath, string firstLine) =>
+        File.Exists(filePath) &&
+        File.ReadAllLines(filePath)
+            .FirstOrDefault() == firstLine;
+
+    public static string? RemoveInvalidCharactersFromFileName(string fileName)
+    {
+        var regexPattern = $"[{Regex.Escape(new(Path.GetInvalidFileNameChars()))}]";
+
+        return Regex.Replace(fileName, regexPattern, string.Empty);
     }
 
     public async static Task UnpackFromZipInFileAsync(

@@ -88,7 +88,7 @@ public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditServi
 
         var records = successes.Select(CSVAuditExtensions.ToCSVColumn);
 
-        var content = ExistsWithFirstLine(_settings.SuccessfulDownloadsFilePath, headers)
+        var content = FileSystemExtensions.FileExistsWithFirstLine(_settings.SuccessfulDownloadsFilePath, headers)
                           ? records
                           : records.Prepend(headers);
 
@@ -124,15 +124,10 @@ public sealed class CSVAuditService(IOptions<CSVSettings> options) : IAuditServi
                   .ConfigureAwait(false);
 
         IEnumerable<(Failure failure, uint retryCount)> GetAvailableFailedRecords() =>
-            ExistsWithFirstLine(_settings.FailedDownloadsFilePath, headers)
+            FileSystemExtensions.FileExistsWithFirstLine(_settings.FailedDownloadsFilePath, headers)
                 ? File.ReadAllLines(_settings.FailedDownloadsFilePath)
                       .Skip(1)
                       .Select(CSVAuditExtensions.ParseFailure)
                 : Enumerable.Empty<(Failure, uint)>();
     }
-
-    private static bool ExistsWithFirstLine(string filePath, string firstLine) =>
-        File.Exists(filePath) &&
-        File.ReadAllLines(filePath)
-            .FirstOrDefault() == firstLine;
 }

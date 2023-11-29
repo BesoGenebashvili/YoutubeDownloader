@@ -3,17 +3,6 @@ using FluentValidation.Validators;
 
 namespace YoutubeDownloader.Validation;
 
-public class FolderPathValidator<T> : PropertyValidator<T, string>
-{
-    public override string Name => "FolderPathValidator";
-
-    public override bool IsValid(ValidationContext<T> context, string value) =>
-        Directory.Exists(value);
-
-    protected override string GetDefaultMessageTemplate(string errorCode) =>
-        "{PropertyName} must be a valid folder path.";
-}
-
 public class FilePathValidator<T> : PropertyValidator<T, string>
 {
     public override string Name => "FilePathValidator";
@@ -59,10 +48,6 @@ public class FileNameValidator<T> : PropertyValidator<T, string>
 
 public static class ValidatorExtensions
 {
-    public static IRuleBuilderOptions<T, string> MustBeValidFolderPath<T>(
-        this IRuleBuilder<T, string> self) =>
-        self.SetValidator(new FolderPathValidator<T>());
-
     public static IRuleBuilderOptions<T, string> MustBeValidFilePath<T>(
         this IRuleBuilder<T, string> self) =>
         self.SetValidator(new FilePathValidator<T>());
