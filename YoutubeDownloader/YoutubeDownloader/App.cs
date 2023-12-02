@@ -1,4 +1,6 @@
-﻿using YoutubeDownloader.Models;
+﻿using Spectre.Console;
+using YoutubeDownloader.Extensions;
+using YoutubeDownloader.Models;
 using YoutubeDownloader.Services;
 using AnsiConsoleExtensions = YoutubeDownloader.Extensions.AnsiConsoleExtensions;
 
@@ -54,5 +56,25 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
 
         await _auditService.AuditDownloadsAsync(downloadResults)
                            .ConfigureAwait(false);
+
+        var appBehavior = AnsiConsoleExtensions.SelectAppBehavior([AppBehavior.Redownload, AppBehavior.Exist]);
+
+        AnsiConsole.Clear();
+
+        switch (appBehavior)
+        {
+            case AppBehavior.Redownload:
+                await RunAsync(args).ConfigureAwait(false);
+                break;
+
+            case AppBehavior.Exist:
+                AnsiConsoleExtensions.MarkupLine(string.Empty, "Bye!", AnsiColor.Green);
+                await Task.Delay(TimeSpan.FromSeconds(1))
+                          .ConfigureAwait(false);
+                break;
+
+            default:
+                throw new NotImplementedException(nameof(appBehavior));
+        }
     }
 }

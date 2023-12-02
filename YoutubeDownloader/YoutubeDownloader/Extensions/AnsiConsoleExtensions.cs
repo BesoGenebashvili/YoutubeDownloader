@@ -7,12 +7,18 @@ using YoutubeExplode.Videos;
 
 namespace YoutubeDownloader.Extensions;
 
-public enum AnsiColor
+public enum AnsiColor : byte
 {
     Green,
     Gray,
     Yellow,
     Red
+}
+
+public enum AppBehavior : byte
+{
+    Redownload,
+    Exist
 }
 
 public static class AnsiConsoleExtensions
@@ -35,6 +41,12 @@ public static class AnsiConsoleExtensions
             AnsiConsole.MarkupLine(text);
         }
     }
+
+    public static AppBehavior SelectAppBehavior(AppBehavior[] appBehaviors) =>
+        AnsiConsole.Prompt(
+            new SelectionPrompt<AppBehavior>()
+                .Title("Select an [green]option[/]:")
+                .AddChoices(appBehaviors));
 
     public static FailedDownloadResendSetting SelectFailedDownloadResendSettings(FailedDownloadResendSetting[] settings)
     {
