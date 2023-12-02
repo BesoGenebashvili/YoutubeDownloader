@@ -57,7 +57,7 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
         await _auditService.AuditDownloadsAsync(downloadResults)
                            .ConfigureAwait(false);
 
-        var appBehavior = AnsiConsoleExtensions.SelectAppBehavior([AppBehavior.Redownload, AppBehavior.Exist]);
+        var appBehavior = AnsiConsoleExtensions.SelectAppBehavior([AppBehavior.Redownload, AppBehavior.Exit]);
 
         AnsiConsole.Clear();
 
@@ -67,7 +67,7 @@ public sealed class App(YoutubeService youtubeService, IAuditService auditServic
                 await RunAsync(args).ConfigureAwait(false);
                 break;
 
-            case AppBehavior.Exist:
+            case AppBehavior.Exit:
                 AnsiConsoleExtensions.MarkupLine(string.Empty, "Bye!", AnsiColor.Green);
                 await Task.Delay(TimeSpan.FromSeconds(1))
                           .ConfigureAwait(false);

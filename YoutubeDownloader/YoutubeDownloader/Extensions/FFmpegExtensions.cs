@@ -1,4 +1,6 @@
-﻿namespace YoutubeDownloader.Extensions;
+﻿using Spectre.Console;
+
+namespace YoutubeDownloader.Extensions;
 
 public static class FFmpegExtensions
 {
@@ -19,6 +21,10 @@ public static class FFmpegExtensions
 
                 // Log -> AnsiConsole.Clear()
                 AnsiConsoleExtensions.MarkupLine("FFmpeg downloaded ", "successfully", AnsiColor.Green);
+
+                await Task.Delay(TimeSpan.FromSeconds(1.8), cancellationToken).ConfigureAwait(false);
+
+                AnsiConsole.Clear();
             }
         }
         catch (TaskCanceledException)

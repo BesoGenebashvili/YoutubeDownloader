@@ -18,7 +18,7 @@ public enum AnsiColor : byte
 public enum AppBehavior : byte
 {
     Redownload,
-    Exist
+    Exit
 }
 
 public static class AnsiConsoleExtensions
