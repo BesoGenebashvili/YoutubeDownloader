@@ -2,6 +2,8 @@
 
 YouTubeDownloader is a user-friendly console application for effortlessly downloading content from various sources in different qualities and formats. It includes a CSV auditing system to track download results.
 
+![console](https://github.com/BesoGenebashvili/YoutubeDownloader/assets/52665934/acc4f94a-bc23-4863-9f4d-213f97911b04)
+
 ## Table of Contents
 
 1. [Installation](#installation)
