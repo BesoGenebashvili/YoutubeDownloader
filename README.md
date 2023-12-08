@@ -8,7 +8,7 @@ YouTubeDownloader is a user-friendly console application for effortlessly downlo
 
 1. [Installation](#installation)
 2. [TODO: Getting Started](#todo-getting-started)
-3. [TODO: Configuration](#todo-configuration)
+3. [Configuration](#configuration)
 4. [Technologies Used](#technologies-used)
 5. [License](#license)
 
@@ -31,6 +31,23 @@ To enhance readability in the console:
    - Go to the "Font" tab, choose "Cascadia Code," click "OK."
 
 Setting the console font to Cascadia Code will improve your experience while using app.
+
+## Configuration
+
+In the `appsettings.json` file, you can adjust the configuration settings.  
+The program creates necessary files and folders and downloads [FFmpeg](https://ffmpeg.org) compatible with your system.
+
+#### `downloaderSettings`
+
+- `saveFolderPath`: Specifies the folder where downloaded files will be stored.
+- `ffmpegPath`: Path to the FFmpeg executable.
+
+#### `auditSettings.csvSettings`
+
+- `auditSuccessful`: Enable/disable auditing for successful downloads.
+- `auditFailed`: Enable/disable auditing for failed downloads.
+- `successfulDownloadsFilePath`: File path for storing details of successful downloads.
+- `failedDownloadsFilePath`: File path for storing details of failed downloads.
 
 ## Technologies Used
 
