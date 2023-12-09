@@ -7,7 +7,7 @@ YouTubeDownloader is a user-friendly console application for effortlessly downlo
 ## Table of Contents
 
 1. [Installation](#installation)
-2. [TODO: Getting Started](#todo-getting-started)
+2. [Getting Started](#getting-started)
 3. [Configuration](#configuration)
 4. [Technologies Used](#technologies-used)
 5. [License](#license)
@@ -31,6 +31,32 @@ To enhance readability in the console:
    - Go to the "Font" tab, choose "Cascadia Code," click "OK."
 
 Setting the console font to Cascadia Code will improve your experience while using app.
+
+## Getting Started
+
+1. **Launch the Application**
+
+   You'll be presented with options to choose your download source:
+
+   - **From video link:** Enter the video ID or URL.
+   - **From playlist link:** Enter the playlist ID or URL, then select videos by title.
+   - **From channel uploads:** Enter the channel ID or URL, then select videos by title.
+   - **From YouTube exported file:** Enter the exported file path on your machine to download all videos from the file. You can use Google Takeout for this.
+   - **From failed downloads:** Choose video IDs for redownloading, then specify whether to 'Keep original' format and quality or 'Override with new' format and quality.
+
+2. **Specify Format & Quality**
+
+   - **MP3**
+     - **Low Bitrate**: Suitable for small size downloads with lower quality.
+     - **High Bitrate**: Provides high quality audio but the file size will be larger.
+   - **MP4**
+     - **SD (480p)**: Standard Definition video, smaller file size but lower quality.
+     - **HD (720p)**: High Definition video, good balance between quality and file size.
+     - **Full HD (1080p)**: Full High Definition video, provides the best quality but the file size will be the largest. Using FFmpeg.
+
+3. **Initiate Download**
+
+   With all information entered, YouTubeDownloader will start downloading asynchronously. Track the progress in the console until completion.
 
 ## Configuration
 
