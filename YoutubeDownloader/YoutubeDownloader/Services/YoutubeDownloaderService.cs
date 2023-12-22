@@ -11,6 +11,7 @@ using YoutubeDownloader.Extensions;
 using YoutubeExplode.Common;
 using YoutubeExplode.Channels;
 using VideoQuality = YoutubeDownloader.Models.VideoQuality;
+using System.Text;
 
 namespace YoutubeDownloader.Services;
 
@@ -19,17 +20,21 @@ public sealed class YoutubeDownloaderService(YoutubeClient youtubeClient, IOptio
     private readonly YoutubeClient _youtubeClient = youtubeClient;
     private readonly DownloaderSettings _settings = options.Value;
 
-    private static string ResolveFilename(string title, VideoId videoId)
+    private string ResolveFilename(string title, VideoId videoId)
     {
-        var validFilename = FileSystemExtensions.RemoveInvalidCharactersFromFileName(title);
+        // TemplateBuilder?
+        var fileNameTemplate = string.IsNullOrWhiteSpace(_settings.FileNameTemplate) 
+                                     ? string.Empty 
+                                     : _settings.FileNameTemplate;
 
-        // TODO: Ref
-        var newFilename = validFilename.Replace("{Id}", videoId)
-                                       .Replace("{Title}", title);
+        var newFilename = fileNameTemplate.Replace("{Id}", videoId)
+                                          .Replace("{Title}", title);
 
-        return string.IsNullOrWhiteSpace(newFilename)
+        var validFilename = FileSystemExtensions.RemoveInvalidCharactersFromFileName(newFilename);
+
+        return string.IsNullOrWhiteSpace(validFilename)
                      ? videoId
-                     : newFilename;
+                     : validFilename;
     }
 
     public ValueTask<List<PlaylistVideo>> ListPlaylistVideosAsync(
