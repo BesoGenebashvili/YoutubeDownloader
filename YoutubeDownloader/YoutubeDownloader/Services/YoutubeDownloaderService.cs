@@ -21,7 +21,11 @@ public sealed class YoutubeDownloaderService(YoutubeClient youtubeClient, IOptio
 
     private static string ResolveFilename(string title, VideoId videoId)
     {
-        var newFilename = FileSystemExtensions.RemoveInvalidCharactersFromFileName(title);
+        var validFilename = FileSystemExtensions.RemoveInvalidCharactersFromFileName(title);
+
+        // TODO: Ref
+        var newFilename = validFilename.Replace("{Id}", videoId)
+                                       .Replace("{Title}", title);
 
         return string.IsNullOrWhiteSpace(newFilename)
                      ? videoId

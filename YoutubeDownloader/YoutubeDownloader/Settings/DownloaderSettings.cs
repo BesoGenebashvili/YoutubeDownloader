@@ -9,6 +9,7 @@ public sealed class DownloaderSettings
 
     public required string SaveFolderPath { get; init; }
     public string? FFmpegPath { get; init; }
+    public string? FileNameTemplate { get; init; }
 }
 
 public sealed class DownloaderSettingsValidator : AbstractValidator<DownloaderSettings>

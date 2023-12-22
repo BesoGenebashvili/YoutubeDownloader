@@ -16,7 +16,7 @@ public static class FileSystemExtensions
         File.ReadAllLines(filePath)
             .FirstOrDefault() == firstLine;
 
-    public static string? RemoveInvalidCharactersFromFileName(string fileName)
+    public static string RemoveInvalidCharactersFromFileName(string fileName)
     {
         var regexPattern = $"[{Regex.Escape(new(Path.GetInvalidFileNameChars()))}]";
 
