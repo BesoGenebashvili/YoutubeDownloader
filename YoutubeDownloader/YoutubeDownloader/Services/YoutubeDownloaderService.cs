@@ -1,17 +1,15 @@
-﻿using YoutubeExplode;
-using YoutubeExplode.Converter;
-using YoutubeExplode.Videos;
+﻿using FluentValidation;
 using Microsoft.Extensions.Options;
-using FluentValidation;
 using YoutubeDownloader.Settings;
-using YoutubeExplode.Playlists;
-using YoutubeExplode.Videos.Streams;
 using YoutubeDownloader.Models;
 using YoutubeDownloader.Extensions;
+using YoutubeExplode;
 using YoutubeExplode.Common;
 using YoutubeExplode.Channels;
+using YoutubeExplode.Converter;
+using YoutubeExplode.Playlists;
+using YoutubeExplode.Videos.Streams;
 using VideoQuality = YoutubeDownloader.Models.VideoQuality;
-using System.Text;
 
 namespace YoutubeDownloader.Services;
 
@@ -19,23 +17,6 @@ public sealed class YoutubeDownloaderService(YoutubeClient youtubeClient, IOptio
 {
     private readonly YoutubeClient _youtubeClient = youtubeClient;
     private readonly DownloaderSettings _settings = options.Value;
-
-    private string ResolveFilename(string title, VideoId videoId)
-    {
-        // TemplateBuilder?
-        var fileNameTemplate = string.IsNullOrWhiteSpace(_settings.FileNameTemplate) 
-                                     ? string.Empty 
-                                     : _settings.FileNameTemplate;
-
-        var newFilename = fileNameTemplate.Replace("{Id}", videoId)
-                                          .Replace("{Title}", title);
-
-        var validFilename = FileSystemExtensions.RemoveInvalidCharactersFromFileName(newFilename);
-
-        return string.IsNullOrWhiteSpace(validFilename)
-                     ? videoId
-                     : validFilename;
-    }
 
     public ValueTask<List<PlaylistVideo>> ListPlaylistVideosAsync(
         PlaylistId playlistId,
@@ -45,9 +26,6 @@ public sealed class YoutubeDownloaderService(YoutubeClient youtubeClient, IOptio
                            playlistId,
                            cancellationToken)
                       .ToListAsync(cancellationToken);
-
-    // TODO
-    public ValueTask<Channel> GetChannelAsync() => throw new NotImplementedException();
 
     public ValueTask<List<PlaylistVideo>> ListChannelUploadsAsync(
         ChannelId channelId,
@@ -74,7 +52,7 @@ public sealed class YoutubeDownloaderService(YoutubeClient youtubeClient, IOptio
                                                      cancellationToken)
                                                  .ConfigureAwait(false);
 
-        var fileName = ResolveFilename(video.Title, downloadContext.VideoId);
+        var fileName = video.ResolveFileName(_settings.FileNameTemplate);
 
         var downloadTask = downloadContext.Configuration switch
         {
