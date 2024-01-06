@@ -67,6 +67,7 @@ The program creates necessary files and folders and downloads [FFmpeg](https://f
 
 - `saveFolderPath`: Specifies the folder where downloaded files will be stored.
 - `ffmpegPath`: Path to the FFmpeg executable.
+- `fileNameTemplate`: Determines the naming template for downloaded files, supports placeholders like `Id`, `Title`, and `ChannelId` within {} to specify where actual values should be inserted in the file names. Default template: "{`Title`}".
 
 #### `auditSettings.csvSettings`
 
