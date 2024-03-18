@@ -107,7 +107,7 @@ public sealed class YoutubeService(YoutubeDownloaderService youtubeDownloaderSer
 
         var downloadContext = getDownloadContext(videoId);
 
-        return await AnsiConsoleExtensions.ShowProgressAsync(async ctx => await DownloadAsync([downloadContext], ctx).ConfigureAwait(false))
+        return await AnsiConsoleExtensions.ShowProgressAsync(async ctx => await DownloadAsync([downloadContext], ctx, cancellationToken).ConfigureAwait(false))
                                           .ConfigureAwait(false);
     }
 

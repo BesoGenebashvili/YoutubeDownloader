@@ -9,6 +9,7 @@ using YoutubeExplode.Channels;
 using YoutubeExplode.Converter;
 using YoutubeExplode.Playlists;
 using YoutubeExplode.Videos.Streams;
+using Serilog;
 using VideoQuality = YoutubeDownloader.Models.VideoQuality;
 
 namespace YoutubeDownloader.Services;
@@ -20,27 +21,37 @@ public sealed class YoutubeDownloaderService(YoutubeClient youtubeClient, IOptio
 
     public ValueTask<List<PlaylistVideo>> ListPlaylistVideosAsync(
         PlaylistId playlistId,
-        CancellationToken cancellationToken = default) =>
-        _youtubeClient.Playlists
-                      .GetVideosAsync(
-                           playlistId,
-                           cancellationToken)
-                      .ToListAsync(cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        Log.Information("Listing playlist videos for playlistId: {playlistId}", playlistId);
+
+        return _youtubeClient.Playlists
+                             .GetVideosAsync(
+                                  playlistId,
+                                  cancellationToken)
+                             .ToListAsync(cancellationToken);
+    }
 
     public ValueTask<List<PlaylistVideo>> ListChannelUploadsAsync(
         ChannelId channelId,
-        CancellationToken cancellationToken = default) =>
-        _youtubeClient.Channels
-                      .GetUploadsAsync(
-                          channelId,
-                          cancellationToken)
-                      .ToListAsync(cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        Log.Information("Listing channel uploads for channelId: {channelId}", channelId);
+
+        return _youtubeClient.Channels
+                             .GetUploadsAsync(
+                                 channelId,
+                                 cancellationToken)
+                             .ToListAsync(cancellationToken);
+    }
 
     public async Task<DownloadResult.Success> DownloadAsync(
         DownloadContext downloadContext,
         IProgress<double>? progress = default,
         CancellationToken cancellationToken = default)
     {
+        Log.Information("Downloading content downloadContext: {downloadContext}", downloadContext);
+
         var video = await _youtubeClient.Videos
                                         .GetAsync(downloadContext.VideoId, cancellationToken)
                                         .ConfigureAwait(false);

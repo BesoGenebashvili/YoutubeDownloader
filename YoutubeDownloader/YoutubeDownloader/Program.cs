@@ -24,7 +24,6 @@ try
 
     FileSystemExtensions.CreateDirectoryIfNotExists(downloaderSettings.SaveFolderPath);
 
-    // TODO: Estimate download time with GetInternetSpeed method
     using var ffmpegConfigurationTokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(5));
     await FFmpegExtensions.ConfigureAsync(downloaderSettings.FFmpegPath, ffmpegConfigurationTokenSource.Token)
                           .ConfigureAwait(false);
